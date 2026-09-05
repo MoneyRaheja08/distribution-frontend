@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LogOut, LayoutDashboard, Store, Package, Tag, Wallet, ClipboardList, BarChart3, ClipboardCheck } from 'lucide-react'
+import { LogOut, LayoutDashboard, Store, Package, Tag, Wallet, ClipboardList, BarChart3, ClipboardCheck, FileBarChart, Users } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
 
 const ICONS = {
@@ -17,7 +17,7 @@ export default function Shell() {
   let tabs = [...(role === 'collector' ? NAV.collector : NAV.staff)]
   if (role === 'manager') tabs = tabs.filter(([to]) => to !== '/money')  // reconciliation is admin-only
   tabs.splice(tabs.length - 1, 0, ['/prices', 'Prices', Tag])
-  if (role === 'admin') tabs.push(['/reconcile', 'Reconcile', ClipboardCheck])
+  if (role === 'admin') tabs.push(['/reconcile', 'Reconcile', ClipboardCheck], ['/reports', 'Reports', FileBarChart], ['/users', 'Users', Users])
   const subtitle = role === 'collector' ? 'Collector' : role === 'admin' ? 'Admin' : 'Manager'
   const onLogout = () => { logout(); nav('/') }
 
@@ -72,12 +72,13 @@ export default function Shell() {
         </div>
 
         {/* Mobile bottom nav */}
-        <div className="fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-md border-t border-slate-200 bg-white/95 backdrop-blur pt-1.5 lg:hidden"
+        <div className={'fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-md border-t border-slate-200 bg-white/95 backdrop-blur pt-1.5 lg:hidden ' + (tabs.length > 5 ? 'overflow-x-auto' : '')}
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.375rem)' }}>
           {tabs.map(([to, label, Icon]) => (
             <NavLink key={to} to={to} end
               className={({ isActive }) =>
-                'flex flex-1 flex-col items-center gap-0.5 py-1 text-[10.5px] font-semibold ' + (isActive ? 'text-emerald-700' : 'text-slate-400')}>
+                (tabs.length > 5 ? 'min-w-[4.6rem] shrink-0 ' : 'flex-1 ') +
+                'flex flex-col items-center gap-0.5 py-1 text-[10.5px] font-semibold ' + (isActive ? 'text-emerald-700' : 'text-slate-400')}>
               {Icon && <Icon size={20} strokeWidth={2.2} />}
               {label}
             </NavLink>

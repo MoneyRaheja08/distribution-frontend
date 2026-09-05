@@ -79,12 +79,7 @@ export default function Dashboard() {
           ))}
       </div>
 
-      {auth.user.role === 'admin' && (
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => nav('/reports')} className="bg-emerald-700 text-white font-semibold py-3.5 rounded-xl">Reports</button>
-          <button onClick={() => nav('/users')} className="bg-slate-900 text-white font-semibold py-3.5 rounded-xl">Manage users</button>
-        </div>
-      )}
+
     </>
   )
 }

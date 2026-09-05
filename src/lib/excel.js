@@ -15,6 +15,7 @@ const CELL = bd('E2E8F0')
 // exportSheet(filename, aoa, { money:[colIndexes], sheet:'Name' })
 export function exportSheet(filename, aoa, opts = {}) {
   const money = new Set(opts.money || [])
+  const boldRows = new Set(opts.boldRows || [])   // section/dealer header rows
   const nrows = aoa.length
   const ncols = aoa.reduce((m, r) => Math.max(m, r.length), 0)
   const ws = XLSX.utils.aoa_to_sheet(aoa)
@@ -23,6 +24,7 @@ export function exportSheet(filename, aoa, opts = {}) {
       const cell = ws[XLSX.utils.encode_cell({ r, c })]
       if (!cell) continue
       if (r === 0) { cell.s = HEADER; continue }
+      if (boldRows.has(r)) { cell.s = { font: { bold: true }, fill: { fgColor: { rgb: 'EEF2F6' } } }; continue }
       const isMoney = money.has(c) && typeof cell.v === 'number'
       cell.s = { border: CELL, alignment: { horizontal: isMoney ? 'right' : 'left', vertical: 'center' } }
       if (isMoney) cell.z = IND

@@ -172,16 +172,22 @@ function BillAgeing() {
   const [r, setR] = useState(null)
   useEffect(() => { api.reportBillAgeing().then(setR) }, [])
   if (!r) return <Spin />
-  const flat = () => {
-    const rows = [['Dealer', 'Bill No', 'Bill Date', 'Bill Amount', 'Unpaid', 'Age (days)', 'Bucket']]
-    r.dealers.forEach((d) => d.bills.forEach((b) => rows.push([d.name, b.bill_no, b.date, b.amount, b.unpaid, b.days, BUCKET_LABEL[b.bucket] + ' days'])))
-    return rows
+  const build = () => {
+    const rows = [['Bill No', 'Bill Date', 'Bill Amount', 'Unpaid', 'Age (days)', 'Bucket']]
+    const bold = []
+    r.dealers.forEach((d) => {
+      bold.push(rows.length)                                   // dealer header row (bold)
+      rows.push([d.name + '  —  Outstanding ' + d.outstanding])
+      d.bills.forEach((b) => rows.push([b.bill_no === 'Opening' ? 'Opening balance' : b.bill_no, b.date, b.amount, b.unpaid, b.days, BUCKET_LABEL[b.bucket] + ' days']))
+      rows.push([])                                            // spacer between dealers
+    })
+    return { rows, bold }
   }
   return (
     <>
       <div className="flex justify-between items-center mb-2 px-0.5">
         <div className="text-xs font-bold text-slate-600">Bill-wise ageing</div>
-        <ExportBtn onClick={() => exportSheet('bill-ageing.xlsx', flat(), { money: [3, 4], sheet: 'Bill ageing' })} />
+        <ExportBtn onClick={() => { const { rows, bold } = build(); exportSheet('bill-ageing.xlsx', rows, { money: [2, 3], boldRows: bold, sheet: 'Bill ageing' }) }} />
       </div>
       {r.dealers.length === 0 ? (
         <div className="text-center text-slate-400 text-sm py-12 bg-white border border-dashed border-slate-200 rounded-xl">Nothing outstanding.</div>
