@@ -150,3 +150,7 @@ export const reconcilePayment = () => wait({ ok: true })
 
 export const markVisited = () => wait({ ok: true })
 export const visitsToday = () => wait([])
+
+export const reportCollections = () => wait({ total: 0, by_mode: {}, by_collector: [] })
+export const reportAgeing = () => wait({ total_outstanding: 0, ageing: {}, top_overdue: [], over_limit: [] })
+export const reportActivity = () => wait({ rows: [] })

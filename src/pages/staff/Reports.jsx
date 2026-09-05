@@ -1,0 +1,130 @@
+import { useEffect, useState } from 'react'
+import * as XLSX from 'xlsx'
+import { Download } from 'lucide-react'
+import { api } from '../../api/client.js'
+import { inr } from '../../lib/format.js'
+import { Spin, BackBtn } from '../../components/ui.jsx'
+
+const monthStart = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01` }
+const today = () => new Date().toISOString().slice(0, 10)
+
+function exportSheet(filename, rows) {
+  const ws = XLSX.utils.aoa_to_sheet(rows)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Report')
+  XLSX.writeFile(wb, filename)
+}
+
+export default function Reports() {
+  const [tab, setTab] = useState('collections')
+  const [from, setFrom] = useState(monthStart())
+  const [to, setTo] = useState(today())
+
+  return (
+    <>
+      <BackBtn label="Overview" />
+      <div className="text-xs font-bold text-slate-600 mb-2.5 px-0.5">Reports</div>
+
+      <div className="flex gap-1.5 mb-3 overflow-x-auto">
+        {[['collections', 'Collections'], ['ageing', 'Ageing'], ['activity', 'Activity']].map(([k, l]) => (
+          <button key={k} onClick={() => setTab(k)}
+            className={'whitespace-nowrap text-[13px] font-semibold px-3.5 py-2 rounded-lg border ' +
+              (tab === k ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500')}>{l}</button>
+        ))}
+      </div>
+
+      {tab !== 'ageing' && (
+        <div className="flex items-end gap-2 mb-4 bg-white border border-slate-200 rounded-xl p-3">
+          <label className="flex-1 text-[11px] font-semibold text-slate-500">From
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="mt-1 w-full border border-slate-200 rounded-lg px-2 py-2 text-[13px]" /></label>
+          <label className="flex-1 text-[11px] font-semibold text-slate-500">To
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="mt-1 w-full border border-slate-200 rounded-lg px-2 py-2 text-[13px]" /></label>
+        </div>
+      )}
+
+      {tab === 'collections' && <Collections from={from} to={to} />}
+      {tab === 'ageing' && <Ageing />}
+      {tab === 'activity' && <Activity from={from} to={to} />}
+    </>
+  )
+}
+
+function Big({ label, value }) {
+  return <div className="bg-white border border-slate-200 rounded-xl p-4 mb-3"><div className="text-2xl font-extrabold">{value}</div><div className="text-[11px] text-slate-500 mt-0.5">{label}</div></div>
+}
+function ExportBtn({ onClick }) {
+  return <button onClick={onClick} className="text-[12px] font-semibold text-emerald-700 bg-emerald-50 rounded-full px-3 py-1.5 flex items-center gap-1"><Download size={13} />Excel</button>
+}
+function Section({ title, action, children }) {
+  return (
+    <div className="mb-4">
+      <div className="flex justify-between items-center mb-2 px-0.5"><div className="text-xs font-bold text-slate-600">{title}</div>{action}</div>
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">{children}</div>
+    </div>
+  )
+}
+function Row2({ a, b, bold }) {
+  return <div className={'flex justify-between px-3.5 py-2.5 border-b border-slate-50 last:border-0 text-[13px] ' + (bold ? 'font-bold' : '')}><span className={bold ? 'text-slate-800' : 'text-slate-500'}>{a}</span><span className="text-slate-900">{b}</span></div>
+}
+
+function Collections({ from, to }) {
+  const [r, setR] = useState(null)
+  useEffect(() => { setR(null); api.reportCollections(from, to).then(setR) }, [from, to])
+  if (!r) return <Spin />
+  return (
+    <>
+      <Big label={`Total collected · ${from} to ${to}`} value={inr(r.total)} />
+      <Section title="By mode" action={<ExportBtn onClick={() => exportSheet('collections-by-mode.xlsx', [['Mode', 'Amount'], ...Object.entries(r.by_mode).map(([m, v]) => [m, v]), ['Total', r.total]])} />}>
+        {Object.keys(r.by_mode).length === 0 ? <Row2 a="No collections in range" b="" /> : Object.entries(r.by_mode).map(([m, v]) => <Row2 key={m} a={m} b={inr(v)} />)}
+      </Section>
+      <Section title="By collector" action={<ExportBtn onClick={() => exportSheet('collections-by-collector.xlsx', [['Collector', 'Receipts', 'Amount'], ...r.by_collector.map((c) => [c.name, c.count, c.amount])])} />}>
+        {r.by_collector.length === 0 ? <Row2 a="No collections in range" b="" /> : r.by_collector.map((c) => <Row2 key={c.name} a={`${c.name} · ${c.count}`} b={inr(c.amount)} />)}
+      </Section>
+    </>
+  )
+}
+
+function Ageing() {
+  const [r, setR] = useState(null)
+  useEffect(() => { api.reportAgeing().then(setR) }, [])
+  if (!r) return <Spin />
+  const AG = [['age_0_30', '0–30 days'], ['age_31_60', '31–60 days'], ['age_61_90', '61–90 days'], ['age_90p', '90+ days']]
+  return (
+    <>
+      <Big label="Total outstanding" value={inr(r.total_outstanding)} />
+      <Section title="By age" action={<ExportBtn onClick={() => exportSheet('ageing.xlsx', [['Bucket', 'Amount'], ...AG.map(([k, l]) => [l, r.ageing[k] || 0]), ['Total', r.total_outstanding]])} />}>
+        {AG.map(([k, l]) => <Row2 key={k} a={l} b={inr(r.ageing[k] || 0)} />)}
+      </Section>
+      <Section title="Worst overdue (90+ first)" action={<ExportBtn onClick={() => exportSheet('top-overdue.xlsx', [['Dealer', 'Outstanding', '90+ days'], ...r.top_overdue.map((d) => [d.name, d.outstanding, d.age_90p])])} />}>
+        {r.top_overdue.length === 0 ? <Row2 a="Nothing overdue" b="" /> : r.top_overdue.map((d) => (
+          <div key={d.name} className="flex justify-between px-3.5 py-2.5 border-b border-slate-50 last:border-0 text-[13px]">
+            <div className="min-w-0"><div className="font-semibold text-slate-800 truncate">{d.name}</div>{d.age_90p > 0 && <div className="text-[11px] text-red-600">{inr(d.age_90p)} over 90 days</div>}</div>
+            <div className="font-bold text-slate-900 shrink-0 pl-2">{inr(d.outstanding)}</div>
+          </div>
+        ))}
+      </Section>
+      {r.over_limit.length > 0 && (
+        <Section title="Over credit limit" action={<ExportBtn onClick={() => exportSheet('over-limit.xlsx', [['Dealer', 'Outstanding', 'Limit'], ...r.over_limit.map((d) => [d.name, d.outstanding, d.limit])])} />}>
+          {r.over_limit.map((d) => <Row2 key={d.name} a={d.name} b={`${inr(d.outstanding)} / ${inr(d.limit)}`} />)}
+        </Section>
+      )}
+    </>
+  )
+}
+
+function Activity({ from, to }) {
+  const [r, setR] = useState(null)
+  useEffect(() => { setR(null); api.reportActivity(from, to).then(setR) }, [from, to])
+  if (!r) return <Spin />
+  return (
+    <Section title={`Collector activity · ${from} to ${to}`}
+      action={<ExportBtn onClick={() => exportSheet('activity.xlsx', [['Name', 'Collected', 'Receipts', 'Visits', 'Dealers visited'], ...r.rows.map((x) => [x.name, x.collected, x.receipts, x.visits, x.dealers_visited])])} />}>
+      {r.rows.length === 0 ? <Row2 a="No activity in range" b="" /> : r.rows.map((x) => (
+        <div key={x.name} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
+          <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800">{x.name}</span><span className="font-bold text-emerald-700">{inr(x.collected)}</span></div>
+          <div className="text-[11px] text-slate-500 mt-0.5">{x.receipts} receipts · {x.visits} visits · {x.dealers_visited} dealers</div>
+        </div>
+      ))}
+    </Section>
+  )
+}

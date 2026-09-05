@@ -16,6 +16,7 @@ import Money from './pages/staff/Money.jsx'
 import Users from './pages/staff/Users.jsx'
 import Approvals from './pages/staff/Approvals.jsx'
 import Reconcile from './pages/staff/Reconcile.jsx'
+import Reports from './pages/staff/Reports.jsx'
 import Prices from './pages/Prices.jsx'
 
 export default function App() {
@@ -50,6 +51,7 @@ export default function App() {
             <Route path="/stock" element={<Stock />} />
             {role === 'admin' && <Route path="/money" element={<Money />} />}
             {role === 'admin' && <Route path="/reconcile" element={<Reconcile />} />}
+            {role === 'admin' && <Route path="/reports" element={<Reports />} />}
             <Route path="/prices" element={<Prices />} />
             <Route path="/approvals" element={<Approvals />} />
             {role === 'admin' && <Route path="/users" element={<Users />} />}
