@@ -15,6 +15,7 @@ export default function Shell() {
   const nav = useNavigate()
   const role = auth.user.role
   let tabs = [...(role === 'collector' ? NAV.collector : NAV.staff)]
+  if (role === 'manager') tabs = tabs.filter(([to]) => to !== '/money')  // reconciliation is admin-only
   tabs.splice(tabs.length - 1, 0, ['/prices', 'Prices', Tag])
   const subtitle = role === 'collector' ? 'Collector' : role === 'admin' ? 'Admin' : 'Manager'
   const onLogout = () => { logout(); nav('/') }

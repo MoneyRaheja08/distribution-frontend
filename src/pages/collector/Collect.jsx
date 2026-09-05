@@ -34,16 +34,18 @@ export default function Collect() {
   }
 
   if (receipt) {
+    const needsApproval = receipt.approved === false
     return (
       <>
         <div className="bg-white border border-dashed border-slate-500 rounded-xl p-6 text-center">
-          <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto mb-3"><Check size={28} /></div>
-          <div className="text-3xl font-extrabold text-emerald-700">{inr(receipt.amount)}</div>
-          <div className="text-xs text-slate-500 mt-1">Receipt R-{receipt.receipt}{receipt.status === 'pending' ? ' · cheque pending clearance' : ''}</div>
+          <div className={'w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3 ' + (needsApproval ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700')}><Check size={28} /></div>
+          <div className={'text-3xl font-extrabold ' + (needsApproval ? 'text-amber-700' : 'text-emerald-700')}>{inr(receipt.amount)}</div>
+          <div className="text-xs text-slate-500 mt-1">{needsApproval ? 'Sent for approval' : 'Receipt R-' + receipt.receipt + (receipt.status === 'pending' ? ' · cheque pending clearance' : '')}</div>
           <div className="text-[12.5px] text-slate-500 mt-4 text-left border-t border-slate-100 pt-3 space-y-1">
             <div className="flex justify-between"><span>Dealer</span><span className="font-semibold text-slate-800">{d.name}</span></div>
             <div className="flex justify-between"><span>Mode</span><span className="font-semibold text-slate-800">{receipt.mode}{receipt.cheque ? ' · ' + receipt.cheque : ''}</span></div>
-            <div className="flex justify-between"><span>New outstanding</span><span className="font-semibold text-slate-800">{inr(receipt.new_outstanding)}</span></div>
+            {!needsApproval && <div className="flex justify-between"><span>New outstanding</span><span className="font-semibold text-slate-800">{inr(receipt.new_outstanding)}</span></div>}
+            {needsApproval && <div className="flex justify-between"><span>Status</span><span className="font-semibold text-amber-700">Awaiting manager/admin approval</span></div>}
           </div>
         </div>
         <button onClick={() => nav('/')} className="w-full mt-4 bg-emerald-700 text-white font-semibold py-3.5 rounded-xl">Done</button>

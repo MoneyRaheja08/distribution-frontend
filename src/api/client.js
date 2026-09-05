@@ -51,6 +51,8 @@ export const api = {
   addBill: (id, bill) => USE_MOCK ? mock.addBill(id, bill) : http('/dealers/' + id + '/bills', { method: 'POST', body: bill }),
   seedDealer: (id, payload) => USE_MOCK ? mock.seedDealer(id, payload) : http('/dealers/' + id + '/seed', { method: 'POST', body: payload }),
   bulkBills: (bills) => USE_MOCK ? mock.bulkBills(bills) : http('/bills/bulk', { method: 'POST', body: { bills } }),
+  pendingPayments: () => USE_MOCK ? mock.pendingPayments() : http('/payments/pending'),
+  approvePayment: (id, approved) => USE_MOCK ? mock.approvePayment(id, approved) : http('/payments/' + id + '/approve', { method: 'PATCH', body: { approved } }),
   parseInvoice: (file) => { if (USE_MOCK) return mock.parseInvoice(file); const fd = new FormData(); fd.append('file', file); return httpForm('/invoices/parse', fd) },
   delDealer: (id) => USE_MOCK ? mock.del('dealers', id) : http('/dealers/' + id, { method: 'DELETE' }),
 

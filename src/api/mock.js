@@ -139,3 +139,6 @@ export const addBill = (id, bill) => {
 export const seedDealer = (id, payload) => wait({ ok: true })
 export const bulkBills = (bills) => wait({ ok: true, added: bills.length, unmatched: [] })
 export const parseInvoice = () => wait({ bill_no: 'H00001', date: '2026-09-04', amount: 125628, party: 'KHANNA ENTERPRISES' })
+
+export const pendingPayments = () => wait([])
+export const approvePayment = () => wait({ ok: true })

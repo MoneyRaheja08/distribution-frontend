@@ -26,6 +26,15 @@ export default function Dashboard() {
         {cards.map(([l, n, tone]) => <Card key={l} n={n} l={l} tone={tone} />)}
       </div>
 
+      {s.pending_approvals > 0 && (
+        <button onClick={() => nav('/approvals')} className="w-full mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center justify-between">
+          <div className="text-left">
+            <div className="text-[14px] font-bold text-amber-800">{s.pending_approvals} payment{s.pending_approvals > 1 ? 's' : ''} awaiting approval</div>
+            <div className="text-[11px] text-amber-700">Tap to review and approve</div>
+          </div>
+          <span className="text-amber-700 font-bold">›</span>
+        </button>
+      )}
       <div className="text-xs font-bold text-slate-600 mb-2.5 px-0.5">Collected today · by collector</div>
       <div className="bg-white border border-slate-200 rounded-xl p-4 mb-3">
         {s.per_collector.length === 0 ? <div className="text-[12px] text-slate-400">No collectors yet.</div>
