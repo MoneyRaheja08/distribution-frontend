@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, RotateCcw } from 'lucide-react'
+import { Check, RotateCcw, Trash2 } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { inr } from '../../lib/format.js'
 import { Spin } from '../../components/ui.jsx'
@@ -11,6 +11,7 @@ export default function Reconcile() {
   useEffect(() => { load() }, [tab])
 
   const set = async (id, reconciled) => { await api.reconcilePayment(id, reconciled); load() }
+  const del = async (id, amount) => { if (confirm('Delete this payment of ' + inr(amount) + '? This removes it completely.')) { await api.deletePayment(id); load() } }
 
   return (
     <>
@@ -42,16 +43,19 @@ export default function Reconcile() {
                 </div>
                 <div className="text-[15px] font-bold text-emerald-700 shrink-0">{inr(p.amount)}</div>
               </div>
-              <div className="mt-3">
+              <div className="mt-3 flex gap-2">
                 {tab === 'todo' ? (
-                  <button onClick={() => set(p.id, true)} className="w-full bg-slate-900 text-white text-[13px] font-semibold py-2 rounded-lg flex items-center justify-center gap-1">
+                  <button onClick={() => set(p.id, true)} className="flex-1 bg-slate-900 text-white text-[13px] font-semibold py-2 rounded-lg flex items-center justify-center gap-1">
                     <Check size={14} />Mark reconciled
                   </button>
                 ) : (
-                  <button onClick={() => set(p.id, false)} className="w-full border border-slate-200 text-slate-600 text-[13px] font-semibold py-2 rounded-lg flex items-center justify-center gap-1">
+                  <button onClick={() => set(p.id, false)} className="flex-1 border border-slate-200 text-slate-600 text-[13px] font-semibold py-2 rounded-lg flex items-center justify-center gap-1">
                     <RotateCcw size={13} />Undo
                   </button>
                 )}
+                <button onClick={() => del(p.id, p.amount)} className="border border-red-200 text-red-700 text-[13px] font-semibold py-2 px-3 rounded-lg flex items-center justify-center gap-1">
+                  <Trash2 size={13} />Delete
+                </button>
               </div>
             </div>
           ))}
