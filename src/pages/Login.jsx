@@ -16,8 +16,8 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-300 flex justify-center p-3 font-sans">
-      <div className="w-full max-w-md bg-slate-100 rounded-3xl shadow-2xl min-h-[770px] pt-14 px-6">
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans">
+      <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-slate-200 py-12 px-7">
         <div className="text-center">
           <div className="text-2xl font-extrabold tracking-tight">Ashoka Distribution</div>
           <div className="text-sm text-slate-500 mt-1 mb-8">Collections &amp; stock</div>

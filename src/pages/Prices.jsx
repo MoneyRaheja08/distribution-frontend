@@ -38,7 +38,7 @@ export default function Prices() {
           {staff ? 'No price lists yet. Tap “New” to add one.' : 'No price lists shared with you yet.'}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
           {lists.map((pl) => (
             <div key={pl.id} className="bg-white border border-slate-200 rounded-xl p-3.5">
               <button onClick={() => setOpen(pl)} className="w-full flex justify-between items-center text-left">
@@ -114,7 +114,7 @@ function Browse({ list, onBack }) {
         ))}
       </div>
       <div className="text-[11px] text-slate-400 mb-2 px-0.5">{filtered.length} models</div>
-      <div className="space-y-2">
+      <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
         {filtered.map((p) => (
           <div key={p.id} className="bg-white border border-slate-200 rounded-xl p-3.5">
             <div className="flex justify-between items-start gap-3">

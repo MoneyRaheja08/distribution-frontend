@@ -10,7 +10,7 @@ export default function StockView() {
   return (
     <>
       <div className="text-xs font-bold text-slate-600 mb-2.5 px-0.5">Godown stock</div>
-      <div className="space-y-2">
+      <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
         {stock.map((s) => {
           const c = s.qty === 0 ? 'text-red-700' : s.qty <= 8 ? 'text-amber-700' : ''
           const tag = s.qty === 0 ? 'Out' : s.qty <= 8 ? 'Low' : 'In stock'

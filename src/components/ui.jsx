@@ -84,9 +84,9 @@ export function Select({ label, value, onChange, options }) {
 
 export function Modal({ title, children, onClose }) {
   return (
-    <div className="absolute inset-0 bg-slate-900/40 flex items-end z-20"
+    <div className="fixed inset-0 bg-slate-900/40 flex items-end lg:items-center lg:justify-center z-30"
       onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-slate-100 w-full rounded-t-3xl p-5 max-h-[92%] overflow-y-auto">
+      <div className="bg-slate-100 w-full max-w-md rounded-t-3xl lg:rounded-2xl p-5 max-h-[92%] overflow-y-auto lg:shadow-2xl">
         <div className="text-base font-bold mb-4">{title}</div>
         {children}
       </div>

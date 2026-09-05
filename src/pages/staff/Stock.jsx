@@ -15,7 +15,7 @@ export default function Stock() {
   return (
     <>
       <SectionH onAdd={() => setEditing({})}>Godown stock</SectionH>
-      <div className="space-y-2">
+      <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
         {data.map((s) => {
           const c = s.qty === 0 ? 'text-red-700' : s.qty <= 8 ? 'text-amber-700' : ''
           const tag = s.qty === 0 ? 'Out' : s.qty <= 8 ? 'Low' : 'In stock'

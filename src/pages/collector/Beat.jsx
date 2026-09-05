@@ -20,7 +20,7 @@ export default function Beat() {
         <Card n={dealers.length} l="My dealers" />
       </div>
       <div className="text-xs font-bold text-slate-600 mb-2.5 px-0.5">My dealers · tap to collect</div>
-      <div className="space-y-2">
+      <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
         {dealers.map((d) => {
           const over = d.outstanding > d.credit_limit
           const old = d.ageing.age_90p > 0

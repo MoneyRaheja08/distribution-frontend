@@ -30,7 +30,7 @@ export default function Dealers() {
         <button onClick={() => setModal('pdf')} className="flex-1 text-[12px] font-semibold text-slate-600 border border-slate-200 rounded-lg py-2 flex items-center justify-center gap-1"><FileText size={13} />Bill from PDF</button>
         <button onClick={() => setModal('bulk')} className="flex-1 text-[12px] font-semibold text-slate-600 border border-slate-200 rounded-lg py-2 flex items-center justify-center gap-1"><Upload size={13} />Bulk bills</button>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
         {data.length === 0 && <div className="text-center text-slate-400 text-sm py-10 bg-white border border-dashed border-slate-200 rounded-xl">No dealers yet. Tap Add, or import a statement.</div>}
         {data.map((d) => {
           const over = d.outstanding > d.credit_limit && d.credit_limit > 0
