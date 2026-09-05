@@ -29,7 +29,7 @@ export default function Beat() {
               className="w-full text-left bg-white border border-slate-200 rounded-xl p-3.5 flex justify-between items-center active:bg-slate-50">
               <div>
                 <div className="text-[15px] font-semibold">{d.name}</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">{d.area}</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">{d.area}{d.visited_today ? ' \u00b7 visited \u2713' : ''}</div>
                 {d.outstanding === 0 ? <Pill tone="ok">Clear</Pill>
                   : over ? <Pill tone="over">Over limit</Pill>
                   : old ? <Pill tone="old">{inr(d.ageing.age_90p)} · 90+ days</Pill> : null}

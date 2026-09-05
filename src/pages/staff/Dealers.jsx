@@ -63,12 +63,19 @@ function Ledger({ dealer, onBack }) {
   const canCollect = isAdmin || (auth.user.role === 'manager' && auth.user.can_collect)
   const [led, setLed] = useState(null)
   const [modal, setModal] = useState(null)
+  const [visited, setVisited] = useState(dealer.visited_today)
   const load = () => api.dealerLedger(dealer.id).then(setLed)
   useEffect(() => { load() }, [dealer.id])
   if (!led) return <Spin />
   return (
     <>
-      <button onClick={onBack} className="flex items-center gap-1 text-sm font-semibold text-slate-600 mb-2 -ml-1">‹ Dealers</button>
+      <div className="flex items-center justify-between mb-2">
+        <button onClick={onBack} className="flex items-center gap-1 text-sm font-semibold text-slate-600 -ml-1">‹ Dealers</button>
+        <button onClick={async () => { if (!visited) { await api.markVisited(dealer.id); setVisited(true) } }}
+          className={'text-xs font-semibold px-3 py-1.5 rounded-lg ' + (visited ? 'bg-slate-100 text-slate-500' : 'bg-slate-900 text-white')}>
+          {visited ? 'Visited \u2713' : 'Mark visited'}
+        </button>
+      </div>
       <LedgerHeader name={led.dealer} outstanding={led.outstanding} ageing={led.ageing} creditLimit={led.credit_limit} lastPayment={led.last_payment} />
       <div className="flex flex-wrap gap-2 mb-3">
         <button onClick={() => setModal('bill')} className="flex-1 min-w-[30%] bg-emerald-700 text-white text-[13px] font-semibold py-2.5 rounded-lg">Add bill</button>

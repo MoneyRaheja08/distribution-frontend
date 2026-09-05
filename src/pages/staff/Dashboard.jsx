@@ -9,7 +9,8 @@ export default function Dashboard() {
   const { auth } = useAuth()
   const nav = useNavigate()
   const [s, setS] = useState(null)
-  useEffect(() => { api.summary().then(setS) }, [])
+  const [visits, setVisits] = useState([])
+  useEffect(() => { api.summary().then(setS); api.visitsToday().then(setVisits) }, [])
   if (!s) return <Spin />
 
   const cards = [
@@ -51,6 +52,17 @@ export default function Dashboard() {
           <span className="text-slate-500">Cheques awaiting clearance</span>
           <span className="font-bold">{inr(s.cheques_pending)}</span>
         </div>
+      </div>
+
+      <div className="text-xs font-bold text-slate-600 mb-2.5 px-0.5">Visits today</div>
+      <div className="bg-white border border-slate-200 rounded-xl p-4 mb-3">
+        {visits.length === 0 ? <div className="text-[12px] text-slate-400">No visits marked yet today.</div> :
+          Object.entries(visits.reduce((acc, v) => { (acc[v.user_name] = acc[v.user_name] || []).push(v.dealer_name); return acc }, {})).map(([who, dealers]) => (
+            <div key={who} className="py-2 border-b border-slate-100 last:border-0">
+              <div className="text-[13px] font-semibold text-slate-800">{who} <span className="text-slate-400 font-normal">· {dealers.length} visit{dealers.length > 1 ? 's' : ''}</span></div>
+              <div className="text-[12px] text-slate-500 mt-0.5">{dealers.join(', ')}</div>
+            </div>
+          ))}
       </div>
 
       {auth.user.role === 'admin' && (

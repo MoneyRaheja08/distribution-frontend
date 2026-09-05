@@ -147,3 +147,6 @@ export const deletePayment = () => wait({ ok: true })
 
 export const collections = () => wait([])
 export const reconcilePayment = () => wait({ ok: true })
+
+export const markVisited = () => wait({ ok: true })
+export const visitsToday = () => wait([])
