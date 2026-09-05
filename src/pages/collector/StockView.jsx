@@ -10,6 +10,7 @@ export default function StockView() {
   return (
     <>
       <div className="text-xs font-bold text-slate-600 mb-2.5 px-0.5">Godown stock</div>
+      {stock.length === 0 && <div className="text-center text-slate-400 text-sm py-12 bg-white border border-dashed border-slate-200 rounded-xl">No stock listed yet.</div>}
       <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
         {stock.map((s) => {
           const c = s.qty === 0 ? 'text-red-700' : s.qty <= 8 ? 'text-amber-700' : ''

@@ -51,17 +51,18 @@ export default function Shell() {
         </aside>
 
         {/* Mobile top bar */}
-        <div className="flex items-center justify-between bg-slate-900 px-5 py-3 text-white lg:hidden">
+        <div className="flex items-center justify-between bg-slate-900 px-5 pb-3 text-white lg:hidden"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}>
           <div>
-            <div className="text-sm font-semibold">{auth.user.name}</div>
+            <div className="text-base font-semibold leading-tight">{auth.user.name}</div>
             <div className="text-[11px] text-slate-400">{subtitle} · Ashoka Distribution</div>
           </div>
-          <button onClick={onLogout} className="text-slate-300"><LogOut size={18} /></button>
+          <button onClick={onLogout} className="rounded-lg p-1.5 text-slate-300 active:bg-white/10"><LogOut size={19} /></button>
         </div>
 
         {/* Content */}
         <div className="flex min-h-0 flex-1 flex-col">
-          <main className="flex-1 overflow-y-auto p-4 pb-24 lg:px-8 lg:py-8 lg:pb-8">
+          <main className="flex-1 overflow-y-auto p-4 pb-28 lg:px-8 lg:py-8 lg:pb-8">
             <div className="mx-auto w-full max-w-2xl lg:max-w-4xl">
               <Outlet />
             </div>
@@ -69,11 +70,13 @@ export default function Shell() {
         </div>
 
         {/* Mobile bottom nav */}
-        <div className="fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-md border-t border-slate-200 bg-white py-2 lg:hidden">
-          {tabs.map(([to, label]) => (
+        <div className="fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-md border-t border-slate-200 bg-white/95 backdrop-blur pt-1.5 lg:hidden"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.375rem)' }}>
+          {tabs.map(([to, label, Icon]) => (
             <NavLink key={to} to={to} end
               className={({ isActive }) =>
-                'flex-1 text-center text-[11px] font-semibold py-1 ' + (isActive ? 'text-emerald-700' : 'text-slate-500')}>
+                'flex flex-1 flex-col items-center gap-0.5 py-1 text-[10.5px] font-semibold ' + (isActive ? 'text-emerald-700' : 'text-slate-400')}>
+              {Icon && <Icon size={20} strokeWidth={2.2} />}
               {label}
             </NavLink>
           ))}

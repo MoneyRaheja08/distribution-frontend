@@ -4,3 +4,6 @@
 
 html, body, #root { height: 100%; }
 body { margin: 0; }
+
+html { background: #e2e8f0; }
+body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
