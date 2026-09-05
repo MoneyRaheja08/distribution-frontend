@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LogOut, LayoutDashboard, Store, Package, Tag, Wallet, ClipboardList, BarChart3 } from 'lucide-react'
+import { LogOut, LayoutDashboard, Store, Package, Tag, Wallet, ClipboardList, BarChart3, ClipboardCheck } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
 
 const ICONS = {
@@ -17,6 +17,7 @@ export default function Shell() {
   let tabs = [...(role === 'collector' ? NAV.collector : NAV.staff)]
   if (role === 'manager') tabs = tabs.filter(([to]) => to !== '/money')  // reconciliation is admin-only
   tabs.splice(tabs.length - 1, 0, ['/prices', 'Prices', Tag])
+  if (role === 'admin') tabs.push(['/reconcile', 'Reconcile', ClipboardCheck])
   const subtitle = role === 'collector' ? 'Collector' : role === 'admin' ? 'Admin' : 'Manager'
   const onLogout = () => { logout(); nav('/') }
 

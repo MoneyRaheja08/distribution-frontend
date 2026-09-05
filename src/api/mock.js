@@ -144,3 +144,6 @@ export const pendingPayments = () => wait([])
 export const approvePayment = () => wait({ ok: true })
 
 export const deletePayment = () => wait({ ok: true })
+
+export const collections = () => wait([])
+export const reconcilePayment = () => wait({ ok: true })

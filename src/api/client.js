@@ -54,6 +54,8 @@ export const api = {
   pendingPayments: () => USE_MOCK ? mock.pendingPayments() : http('/payments/pending'),
   approvePayment: (id, approved) => USE_MOCK ? mock.approvePayment(id, approved) : http('/payments/' + id + '/approve', { method: 'PATCH', body: { approved } }),
   deletePayment: (id) => USE_MOCK ? mock.deletePayment(id) : http('/payments/' + id, { method: 'DELETE' }),
+  collections: (reconciled) => USE_MOCK ? mock.collections(reconciled) : http('/payments/collections' + (reconciled === undefined ? '' : '?reconciled=' + reconciled)),
+  reconcilePayment: (id, reconciled) => USE_MOCK ? mock.reconcilePayment(id, reconciled) : http('/payments/' + id + '/reconcile', { method: 'PATCH', body: { reconciled } }),
   parseInvoice: (file) => { if (USE_MOCK) return mock.parseInvoice(file); const fd = new FormData(); fd.append('file', file); return httpForm('/invoices/parse', fd) },
   delDealer: (id) => USE_MOCK ? mock.del('dealers', id) : http('/dealers/' + id, { method: 'DELETE' }),
 
