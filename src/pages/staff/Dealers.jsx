@@ -28,7 +28,7 @@ export default function Dealers() {
       <SectionH onAdd={() => setEditing({})}>Dealers</SectionH>
       <div className="flex gap-2 mb-3">
         <button onClick={() => setModal('pdf')} className="flex-1 text-[12px] font-semibold text-slate-600 border border-slate-200 rounded-lg py-2 flex items-center justify-center gap-1"><FileText size={13} />Bill from PDF</button>
-        <button onClick={() => setModal('bulk')} className="flex-1 text-[12px] font-semibold text-slate-600 border border-slate-200 rounded-lg py-2 flex items-center justify-center gap-1"><Upload size={13} />Bulk bills</button>
+        {isAdmin && <button onClick={() => setModal('bulk')} className="flex-1 text-[12px] font-semibold text-slate-600 border border-slate-200 rounded-lg py-2 flex items-center justify-center gap-1"><Upload size={13} />Bulk bills</button>}
       </div>
       <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
         {data.length === 0 && <div className="text-center text-slate-400 text-sm py-10 bg-white border border-dashed border-slate-200 rounded-xl">No dealers yet. Tap Add, or import a statement.</div>}
@@ -58,6 +58,9 @@ export default function Dealers() {
 }
 
 function Ledger({ dealer, onBack }) {
+  const { auth } = useAuth()
+  const isAdmin = auth.user.role === 'admin'
+  const canCollect = isAdmin || (auth.user.role === 'manager' && auth.user.can_collect)
   const [led, setLed] = useState(null)
   const [modal, setModal] = useState(null)
   const load = () => api.dealerLedger(dealer.id).then(setLed)
@@ -67,15 +70,47 @@ function Ledger({ dealer, onBack }) {
     <>
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-semibold text-slate-600 mb-2 -ml-1">‹ Dealers</button>
       <LedgerHeader name={led.dealer} outstanding={led.outstanding} ageing={led.ageing} creditLimit={led.credit_limit} lastPayment={led.last_payment} />
-      <div className="flex gap-2 mb-3">
-        <button onClick={() => setModal('bill')} className="flex-1 bg-emerald-700 text-white text-[13px] font-semibold py-2.5 rounded-lg">Add bill</button>
-        <button onClick={() => setModal('statement')} className="flex-1 border border-slate-200 text-slate-600 text-[13px] font-semibold py-2.5 rounded-lg">Import statement</button>
+      <div className="flex flex-wrap gap-2 mb-3">
+        <button onClick={() => setModal('bill')} className="flex-1 min-w-[30%] bg-emerald-700 text-white text-[13px] font-semibold py-2.5 rounded-lg">Add bill</button>
+        {canCollect && led.outstanding > 0 && <button onClick={() => setModal('collect')} className="flex-1 min-w-[30%] bg-slate-900 text-white text-[13px] font-semibold py-2.5 rounded-lg">Record payment</button>}
+        {isAdmin && <button onClick={() => setModal('statement')} className="flex-1 min-w-[30%] border border-slate-200 text-slate-600 text-[13px] font-semibold py-2.5 rounded-lg">Import statement</button>}
       </div>
       <div className="text-xs font-bold text-slate-600 mb-2 px-0.5">Ledger · oldest first</div>
       <LedgerTable entries={led.entries} />
       {modal === 'bill' && <BillModal dealer={dealer} onClose={() => setModal(null)} onDone={() => { setModal(null); load() }} />}
       {modal === 'statement' && <StatementModal dealer={dealer} onClose={() => setModal(null)} onDone={() => { setModal(null); load() }} />}
+      {modal === 'collect' && <CollectModal dealer={dealer} outstanding={led.outstanding} onClose={() => setModal(null)} onDone={() => { setModal(null); load() }} />}
     </>
+  )
+}
+
+function CollectModal({ dealer, outstanding, onClose, onDone }) {
+  const [f, setF] = useState({ amount: '', mode: 'RTGS', cheque: '' })
+  const [busy, setBusy] = useState(false)
+  const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
+  const save = async () => {
+    const a = parseInt(f.amount || 0)
+    if (!a || a <= 0) return alert('Enter an amount')
+    if (a > outstanding) return alert('Amount exceeds outstanding of ' + inr(outstanding))
+    if (f.mode === 'Cheque' && !f.cheque.trim()) return alert('Enter cheque details')
+    setBusy(true)
+    try { await api.collect({ dealer_id: dealer.id, amount: a, mode: f.mode, cheque: f.cheque }); onDone() }
+    catch (err) { alert(err.message); setBusy(false) }
+  }
+  return (
+    <Modal title={'Record payment — ' + dealer.name} onClose={onClose}>
+      <Field label="Amount received" value={f.amount} onChange={(v) => set('amount', v)} type="number" />
+      <div className="text-xs font-semibold text-slate-600 mb-1.5">Mode</div>
+      <div className="flex gap-2 mb-3">
+        {['RTGS', 'Cash', 'Cheque', 'UPI'].map((m) => (
+          <button key={m} onClick={() => set('mode', m)}
+            className={'flex-1 py-2.5 rounded-lg text-[12px] font-semibold border ' + (f.mode === m ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500')}>{m}</button>
+        ))}
+      </div>
+      {f.mode === 'Cheque' && <Field label="Cheque no. & bank" value={f.cheque} onChange={(v) => set('cheque', v)} />}
+      <div className="text-[11px] text-slate-500 mb-3">Applied to oldest dues first.</div>
+      <button onClick={save} disabled={busy} className="w-full bg-emerald-700 text-white font-semibold py-3 rounded-xl disabled:opacity-60">Save payment</button>
+    </Modal>
   )
 }
 
