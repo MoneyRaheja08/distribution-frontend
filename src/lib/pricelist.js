@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx'
+import * as XLSX from 'xlsx-js-style'
 
 const CATEGORY_MAP = {
   WH: 'Water Heaters', REF: 'Refrigerators', AC: 'Air Conditioners',

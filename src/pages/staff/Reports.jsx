@@ -1,19 +1,14 @@
 import { useEffect, useState } from 'react'
-import * as XLSX from 'xlsx'
 import { Download } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { inr } from '../../lib/format.js'
+import { exportSheet } from '../../lib/excel.js'
 import { Spin, BackBtn, Card } from '../../components/ui.jsx'
 
 const monthStart = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01` }
 const today = () => new Date().toISOString().slice(0, 10)
 
-function exportSheet(filename, rows) {
-  const ws = XLSX.utils.aoa_to_sheet(rows)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Report')
-  XLSX.writeFile(wb, filename)
-}
+
 
 export default function Reports() {
   const [tab, setTab] = useState('collections')
@@ -76,13 +71,13 @@ function Collections({ from, to }) {
   return (
     <>
       <Big label={`Total collected · ${from} to ${to}`} value={inr(r.total)} />
-      <Section title="By mode" action={<ExportBtn onClick={() => exportSheet('collections-by-mode.xlsx', [['Mode', 'Amount'], ...Object.entries(r.by_mode).map(([m, v]) => [m, v]), ['Total', r.total]])} />}>
+      <Section title="By mode" action={<ExportBtn onClick={() => exportSheet('collections-by-mode.xlsx', [['Mode', 'Amount'], ...Object.entries(r.by_mode).map(([m, v]) => [m, v]), ['Total', r.total]], { money: [1], sheet: 'Collections by mode' })} />}>
         {Object.keys(r.by_mode).length === 0 ? <Row2 a="No collections in range" b="" /> : Object.entries(r.by_mode).map(([m, v]) => <Row2 key={m} a={m} b={inr(v)} />)}
       </Section>
-      <Section title="By collector" action={<ExportBtn onClick={() => exportSheet('collections-by-collector.xlsx', [['Collector', 'Receipts', 'Amount'], ...r.by_collector.map((c) => [c.name, c.count, c.amount])])} />}>
+      <Section title="By collector" action={<ExportBtn onClick={() => exportSheet('collections-by-collector.xlsx', [['Collector', 'Receipts', 'Amount'], ...r.by_collector.map((c) => [c.name, c.count, c.amount])], { money: [2], sheet: 'By collector' })} />}>
         {r.by_collector.length === 0 ? <Row2 a="No collections in range" b="" /> : r.by_collector.map((c) => <Row2 key={c.name} a={`${c.name} · ${c.count}`} b={inr(c.amount)} />)}
       </Section>
-      <Section title="All entries" action={<ExportBtn onClick={() => exportSheet('collections.xlsx', [['Date', 'Dealer', 'Mode', 'Collector', 'Amount'], ...(r.rows || []).map((x) => [x.date, x.dealer, x.mode, x.collector, x.amount])])} />}>
+      <Section title="All entries" action={<ExportBtn onClick={() => exportSheet('collections.xlsx', [['Date', 'Dealer', 'Mode', 'Collector', 'Amount'], ...(r.rows || []).map((x) => [x.date, x.dealer, x.mode, x.collector, x.amount])], { money: [4], sheet: 'Collections' })} />}>
         {(r.rows || []).length === 0 ? <Row2 a="No collections in range" b="" /> : r.rows.map((x, i) => (
           <div key={i} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
             <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{x.dealer}</span><span className="font-bold text-emerald-700 shrink-0">{inr(x.amount)}</span></div>
@@ -102,10 +97,10 @@ function Ageing() {
   return (
     <>
       <Big label="Total outstanding" value={inr(r.total_outstanding)} />
-      <Section title="By age" action={<ExportBtn onClick={() => exportSheet('ageing.xlsx', [['Bucket', 'Amount'], ...AG.map(([k, l]) => [l, r.ageing[k] || 0]), ['Total', r.total_outstanding]])} />}>
+      <Section title="By age" action={<ExportBtn onClick={() => exportSheet('ageing.xlsx', [['Bucket', 'Amount'], ...AG.map(([k, l]) => [l, r.ageing[k] || 0]), ['Total', r.total_outstanding]], { money: [1], sheet: 'Ageing' })} />}>
         {AG.map(([k, l]) => <Row2 key={k} a={l} b={inr(r.ageing[k] || 0)} />)}
       </Section>
-      <Section title="Worst overdue (90+ first)" action={<ExportBtn onClick={() => exportSheet('top-overdue.xlsx', [['Dealer', 'Outstanding', '90+ days'], ...r.top_overdue.map((d) => [d.name, d.outstanding, d.age_90p])])} />}>
+      <Section title="Worst overdue (90+ first)" action={<ExportBtn onClick={() => exportSheet('top-overdue.xlsx', [['Dealer', 'Outstanding', '90+ days'], ...r.top_overdue.map((d) => [d.name, d.outstanding, d.age_90p])], { money: [1, 2], sheet: 'Top overdue' })} />}>
         {r.top_overdue.length === 0 ? <Row2 a="Nothing overdue" b="" /> : r.top_overdue.map((d) => (
           <div key={d.name} className="flex justify-between px-3.5 py-2.5 border-b border-slate-50 last:border-0 text-[13px]">
             <div className="min-w-0"><div className="font-semibold text-slate-800 truncate">{d.name}</div>{d.age_90p > 0 && <div className="text-[11px] text-red-600">{inr(d.age_90p)} over 90 days</div>}</div>
@@ -114,11 +109,11 @@ function Ageing() {
         ))}
       </Section>
       {r.over_limit.length > 0 && (
-        <Section title="Over credit limit" action={<ExportBtn onClick={() => exportSheet('over-limit.xlsx', [['Dealer', 'Outstanding', 'Limit'], ...r.over_limit.map((d) => [d.name, d.outstanding, d.limit])])} />}>
+        <Section title="Over credit limit" action={<ExportBtn onClick={() => exportSheet('over-limit.xlsx', [['Dealer', 'Outstanding', 'Limit'], ...r.over_limit.map((d) => [d.name, d.outstanding, d.limit])], { money: [1, 2], sheet: 'Over limit' })} />}>
           {r.over_limit.map((d) => <Row2 key={d.name} a={d.name} b={`${inr(d.outstanding)} / ${inr(d.limit)}`} />)}
         </Section>
       )}
-      <Section title="Dealer-wise ageing" action={<ExportBtn onClick={() => exportSheet('dealer-ageing.xlsx', [['Dealer', '0-30', '31-60', '61-90', '90+', 'Outstanding'], ...(r.dealers || []).map((d) => [d.name, d.age_0_30, d.age_31_60, d.age_61_90, d.age_90p, d.outstanding])])} />}>
+      <Section title="Dealer-wise ageing" action={<ExportBtn onClick={() => exportSheet('dealer-ageing.xlsx', [['Dealer', '0-30', '31-60', '61-90', '90+', 'Outstanding'], ...(r.dealers || []).map((d) => [d.name, d.age_0_30, d.age_31_60, d.age_61_90, d.age_90p, d.outstanding])], { money: [1, 2, 3, 4, 5], sheet: 'Dealer ageing' })} />}>
         {(r.dealers || []).length === 0 ? <Row2 a="Nothing outstanding" b="" /> : r.dealers.map((d) => (
           <div key={d.name} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
             <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{d.name}</span><span className="font-bold text-slate-900 shrink-0">{inr(d.outstanding)}</span></div>
@@ -141,7 +136,7 @@ function SalesVsColl({ from, to }) {
         <Card n={inr(r.total_collected)} l="Total collected" />
       </div>
       <Section title={`Per dealer · ${from} to ${to}`}
-        action={<ExportBtn onClick={() => exportSheet('sales-vs-collection.xlsx', [['Dealer', 'Sales', 'Collected', 'Net (sales-coll)'], ...r.rows.map((x) => [x.name, x.sales, x.collected, x.net])])} />}>
+        action={<ExportBtn onClick={() => exportSheet('sales-vs-collection.xlsx', [['Dealer', 'Sales', 'Collected', 'Net (sales-coll)'], ...r.rows.map((x) => [x.name, x.sales, x.collected, x.net])], { money: [1, 2, 3], sheet: 'Sales vs Collection' })} />}>
         {r.rows.length === 0 ? <Row2 a="No activity in range" b="" /> : r.rows.map((x) => (
           <div key={x.name} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
             <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{x.name}</span>
@@ -160,7 +155,7 @@ function Activity({ from, to }) {
   if (!r) return <Spin />
   return (
     <Section title={`Collector activity · ${from} to ${to}`}
-      action={<ExportBtn onClick={() => exportSheet('activity.xlsx', [['Name', 'Collected', 'Receipts', 'Visits', 'Dealers visited'], ...r.rows.map((x) => [x.name, x.collected, x.receipts, x.visits, x.dealers_visited])])} />}>
+      action={<ExportBtn onClick={() => exportSheet('activity.xlsx', [['Name', 'Collected', 'Receipts', 'Visits', 'Dealers visited'], ...r.rows.map((x) => [x.name, x.collected, x.receipts, x.visits, x.dealers_visited])], { money: [1], sheet: 'Activity' })} />}>
       {r.rows.length === 0 ? <Row2 a="No activity in range" b="" /> : r.rows.map((x) => (
         <div key={x.name} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
           <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800">{x.name}</span><span className="font-bold text-emerald-700">{inr(x.collected)}</span></div>
@@ -186,7 +181,7 @@ function BillAgeing() {
     <>
       <div className="flex justify-between items-center mb-2 px-0.5">
         <div className="text-xs font-bold text-slate-600">Bill-wise ageing</div>
-        <ExportBtn onClick={() => exportSheet('bill-ageing.xlsx', flat())} />
+        <ExportBtn onClick={() => exportSheet('bill-ageing.xlsx', flat(), { money: [3, 4], sheet: 'Bill ageing' })} />
       </div>
       {r.dealers.length === 0 ? (
         <div className="text-center text-slate-400 text-sm py-12 bg-white border border-dashed border-slate-200 rounded-xl">Nothing outstanding.</div>
