@@ -3,6 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../../api/client.js'
 import { inr } from '../../lib/format.js'
 import { Card, Spin } from '../../components/ui.jsx'
+
+const fmtTime = (iso) => {
+  if (!iso) return ''
+  try {
+    return new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })
+  } catch { return '' }
+}
 import { useAuth } from '../../auth/AuthContext.jsx'
 
 export default function Dashboard() {
@@ -57,10 +64,17 @@ export default function Dashboard() {
       <div className="text-xs font-bold text-slate-600 mb-2.5 px-0.5">Visits today</div>
       <div className="bg-white border border-slate-200 rounded-xl p-4 mb-3">
         {visits.length === 0 ? <div className="text-[12px] text-slate-400">No visits marked yet today.</div> :
-          Object.entries(visits.reduce((acc, v) => { (acc[v.user_name] = acc[v.user_name] || []).push(v.dealer_name); return acc }, {})).map(([who, dealers]) => (
+          Object.entries(visits.reduce((acc, v) => { (acc[v.user_name] = acc[v.user_name] || []).push(v); return acc }, {})).map(([who, vs]) => (
             <div key={who} className="py-2 border-b border-slate-100 last:border-0">
-              <div className="text-[13px] font-semibold text-slate-800">{who} <span className="text-slate-400 font-normal">· {dealers.length} visit{dealers.length > 1 ? 's' : ''}</span></div>
-              <div className="text-[12px] text-slate-500 mt-0.5">{dealers.join(', ')}</div>
+              <div className="text-[13px] font-semibold text-slate-800">{who} <span className="text-slate-400 font-normal">· {vs.length} visit{vs.length > 1 ? 's' : ''}</span></div>
+              <div className="mt-1 space-y-0.5">
+                {vs.slice().sort((a, b) => (a.first_ts || '').localeCompare(b.first_ts || '')).map((v, i) => (
+                  <div key={i} className="flex justify-between text-[12px] text-slate-500">
+                    <span className="truncate pr-2">{v.dealer_name}</span>
+                    <span className="shrink-0 tabular-nums">{fmtTime(v.first_ts)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
       </div>
