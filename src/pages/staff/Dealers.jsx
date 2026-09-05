@@ -4,6 +4,7 @@ import { api } from '../../api/client.js'
 import { inr } from '../../lib/format.js'
 import { parseStatement, parseBulkBills, downloadBillsTemplate } from '../../lib/statement.js'
 import { Spin, SectionH, RowActions, Pill, Modal, Field, Select } from '../../components/ui.jsx'
+import { LedgerHeader, LedgerTable } from '../../components/Ledger.jsx'
 import { useAuth } from '../../auth/AuthContext.jsx'
 
 export default function Dealers() {
@@ -65,31 +66,13 @@ function Ledger({ dealer, onBack }) {
   return (
     <>
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-semibold text-slate-600 mb-2 -ml-1">‹ Dealers</button>
-      <div className="bg-white border border-slate-200 rounded-xl p-4 mb-3">
-        <div className="text-lg font-bold">{led.dealer}</div>
-        <div className="text-[13px] text-slate-500 mt-1">Outstanding <b className="text-slate-900">{inr(led.outstanding)}</b></div>
-        {led.last_payment && <div className="text-[12px] text-slate-500">Last payment {inr(led.last_payment.amount)} · {led.last_payment.date}</div>}
-      </div>
+      <LedgerHeader name={led.dealer} outstanding={led.outstanding} ageing={led.ageing} creditLimit={led.credit_limit} lastPayment={led.last_payment} />
       <div className="flex gap-2 mb-3">
         <button onClick={() => setModal('bill')} className="flex-1 bg-emerald-700 text-white text-[13px] font-semibold py-2.5 rounded-lg">Add bill</button>
         <button onClick={() => setModal('statement')} className="flex-1 border border-slate-200 text-slate-600 text-[13px] font-semibold py-2.5 rounded-lg">Import statement</button>
       </div>
-      <div className="text-xs font-bold text-slate-600 mb-2 px-0.5">Ledger</div>
-      <div className="bg-white border border-slate-200 rounded-xl p-2">
-        {led.entries.length === 0 ? <div className="text-[12px] text-slate-400 p-3">No entries yet. Import the statement to seed the ledger.</div> :
-          led.entries.slice().reverse().map((e, i) => (
-            <div key={i} className="flex justify-between items-center px-2 py-2 border-b border-slate-100 last:border-0 text-[13px]">
-              <div className="text-slate-500 min-w-0">
-                <span className="text-slate-900 font-semibold block truncate">{e.type === 'bill' ? 'Bill ' + e.ref : (e.mode || 'Payment') + (e.ref ? ' ' + e.ref : '')}</span>
-                {e.date}
-              </div>
-              <div className="text-right shrink-0 pl-2">
-                <div className={'font-bold ' + (e.debit ? 'text-slate-800' : 'text-emerald-700')}>{e.debit ? inr(e.debit) : '\u2212 ' + inr(e.credit)}</div>
-                <div className="text-[10px] text-slate-400">bal {inr(e.balance)}</div>
-              </div>
-            </div>
-          ))}
-      </div>
+      <div className="text-xs font-bold text-slate-600 mb-2 px-0.5">Ledger · oldest first</div>
+      <LedgerTable entries={led.entries} />
       {modal === 'bill' && <BillModal dealer={dealer} onClose={() => setModal(null)} onDone={() => { setModal(null); load() }} />}
       {modal === 'statement' && <StatementModal dealer={dealer} onClose={() => setModal(null)} onDone={() => { setModal(null); load() }} />}
     </>
@@ -133,8 +116,8 @@ function BillModal({ dealer, onClose, onDone }) {
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
   const save = async () => {
     if (!f.bill_no.trim() || !(+f.amount > 0)) return alert('Enter bill number and amount')
-    await api.addBill(dealer.id, { bill_no: f.bill_no.trim(), date: f.date, amount: +f.amount })
-    onDone()
+    try { await api.addBill(dealer.id, { bill_no: f.bill_no.trim(), date: f.date, amount: +f.amount }); onDone() }
+    catch (err) { alert(err.message) }
   }
   return (
     <Modal title={'Add bill \u2014 ' + dealer.name} onClose={onClose}>
@@ -243,8 +226,10 @@ function PdfModal({ dealers, onClose, onDone }) {
   const save = async () => {
     if (!dealerId) return alert('Pick the dealer this bill belongs to')
     setBusy(true)
-    await api.addBill(dealerId, { bill_no: parsed.bill_no, date: parsed.date || new Date().toISOString().slice(0, 10), amount: parsed.amount })
-    onDone()
+    try {
+      await api.addBill(dealerId, { bill_no: parsed.bill_no, date: parsed.date || new Date().toISOString().slice(0, 10), amount: parsed.amount })
+      onDone()
+    } catch (err) { alert(err.message); setBusy(false) }
   }
   return (
     <Modal title="Add bill from invoice PDF" onClose={onClose}>
