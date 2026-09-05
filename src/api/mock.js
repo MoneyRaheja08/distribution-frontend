@@ -125,3 +125,17 @@ export const importPricelist = (id, products) => {
   return wait({ ok: true, count: products.length })
 }
 export const selectableUsers = () => wait(store.users.filter((u) => u.role !== 'admin').map((u) => ({ id: u.id, name: u.name, role: u.role })))
+
+// ---- ledger / bills (mock stubs) ----
+export const dealerLedger = (id) => {
+  const d = store.dealers.find((x) => x.id === id) || { name: 'Dealer' }
+  return wait({ dealer: d.name, outstanding: outstanding(d), last_payment: null, entries: [] })
+}
+export const addBill = (id, bill) => {
+  const d = store.dealers.find((x) => x.id === id)
+  if (d) d.ageing.age_0_30 = (d.ageing.age_0_30 || 0) + (bill.amount || 0)
+  return wait({ ok: true })
+}
+export const seedDealer = (id, payload) => wait({ ok: true })
+export const bulkBills = (bills) => wait({ ok: true, added: bills.length, unmatched: [] })
+export const parseInvoice = () => wait({ bill_no: 'H00001', date: '2026-09-04', amount: 125628, party: 'KHANNA ENTERPRISES' })

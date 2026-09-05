@@ -23,6 +23,20 @@ async function http(path, { method = 'GET', body } = {}) {
   return res.json()
 }
 
+async function httpForm(path, formData) {
+  const res = await fetch(BASE + path, {
+    method: 'POST',
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: formData,
+  })
+  if (!res.ok) {
+    let detail
+    try { detail = (await res.json()).detail } catch { /* ignore */ }
+    throw new Error(detail || `Request failed (${res.status})`)
+  }
+  return res.json()
+}
+
 // Each method maps 1:1 to a FastAPI endpoint. Flip VITE_USE_MOCK to switch.
 export const api = {
   login: (name, pin) => USE_MOCK ? mock.login(name, pin) : http('/auth/login', { method: 'POST', body: { name, pin } }),
@@ -32,7 +46,12 @@ export const api = {
   dealers: () => USE_MOCK ? mock.dealers() : http('/dealers'),
   dealer: (id) => USE_MOCK ? mock.dealer(id) : http('/dealers/' + id),
   saveDealer: (d) => USE_MOCK ? mock.save('dealers', d)
-    : http(d.id ? '/dealers/' + d.id : '/dealers', { method: d.id ? 'PATCH' : 'POST', body: d }),
+    : http(d.id ? '/dealers/' + d.id : ('/dealers?opening_balance=' + (d.opening_balance || 0)), { method: d.id ? 'PATCH' : 'POST', body: d }),
+  dealerLedger: (id) => USE_MOCK ? mock.dealerLedger(id) : http('/dealers/' + id + '/ledger'),
+  addBill: (id, bill) => USE_MOCK ? mock.addBill(id, bill) : http('/dealers/' + id + '/bills', { method: 'POST', body: bill }),
+  seedDealer: (id, payload) => USE_MOCK ? mock.seedDealer(id, payload) : http('/dealers/' + id + '/seed', { method: 'POST', body: payload }),
+  bulkBills: (bills) => USE_MOCK ? mock.bulkBills(bills) : http('/bills/bulk', { method: 'POST', body: { bills } }),
+  parseInvoice: (file) => { if (USE_MOCK) return mock.parseInvoice(file); const fd = new FormData(); fd.append('file', file); return httpForm('/invoices/parse', fd) },
   delDealer: (id) => USE_MOCK ? mock.del('dealers', id) : http('/dealers/' + id, { method: 'DELETE' }),
 
   stock: () => USE_MOCK ? mock.list('stock') : http('/stock'),

@@ -9,11 +9,11 @@ export default function Dealer() {
   const { id } = useParams()
   const nav = useNavigate()
   const [d, setD] = useState(null)
-  const [ledger, setLedger] = useState([])
+  const [led, setLed] = useState(null)
 
   useEffect(() => {
     api.dealer(id).then(setD)
-    api.payments('?dealer_id=' + id).then(setLedger)
+    api.dealerLedger(id).then(setLed)
   }, [id])
   if (!d) return <Spin />
 
@@ -58,17 +58,21 @@ export default function Dealer() {
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl p-4 mb-3">
-        <div className="text-xs font-bold text-slate-600 mb-1">Recent payments</div>
-        {ledger.length === 0 ? (
-          <div className="text-[11px] text-slate-400 py-1">No payments yet.</div>
-        ) : ledger.map((p) => (
-          <div key={p.id} className="flex justify-between py-2 border-b border-slate-100 last:border-0 text-[13px]">
-            <div className="text-slate-500">
-              <span className="text-slate-900 font-semibold block">{p.mode}{p.status === 'pending' ? ' · pending' : p.status === 'bounced' ? ' · bounced' : ''}</span>
-              {p.date} · R-{p.receipt}
+        <div className="flex justify-between items-center mb-1">
+          <div className="text-xs font-bold text-slate-600">Ledger</div>
+          {led?.last_payment && <div className="text-[11px] text-slate-500">Last paid {inr(led.last_payment.amount)} · {led.last_payment.date}</div>}
+        </div>
+        {!led || led.entries.length === 0 ? (
+          <div className="text-[11px] text-slate-400 py-1">No entries yet.</div>
+        ) : led.entries.slice().reverse().slice(0, 12).map((e, i) => (
+          <div key={i} className="flex justify-between py-2 border-b border-slate-100 last:border-0 text-[13px]">
+            <div className="text-slate-500 min-w-0">
+              <span className="text-slate-900 font-semibold block truncate">{e.type === 'bill' ? 'Bill ' + e.ref : (e.mode || 'Payment')}</span>
+              {e.date}
             </div>
-            <div className={'font-bold ' + (p.status !== 'bounced' ? 'text-emerald-700' : 'text-slate-400')}>
-              {p.status === 'bounced' ? '' : '−'}{inr(p.amount)}
+            <div className="text-right shrink-0 pl-2">
+              <div className={'font-bold ' + (e.debit ? 'text-slate-800' : 'text-emerald-700')}>{e.debit ? inr(e.debit) : '− ' + inr(e.credit)}</div>
+              <div className="text-[10px] text-slate-400">bal {inr(e.balance)}</div>
             </div>
           </div>
         ))}
