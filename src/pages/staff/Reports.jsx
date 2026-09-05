@@ -26,14 +26,14 @@ export default function Reports() {
       <div className="text-xs font-bold text-slate-600 mb-2.5 px-0.5">Reports</div>
 
       <div className="flex gap-1.5 mb-3 overflow-x-auto">
-        {[['collections', 'Collections'], ['ageing', 'Ageing'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']].map(([k, l]) => (
+        {[['collections', 'Collections'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']].map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
             className={'whitespace-nowrap text-[13px] font-semibold px-3.5 py-2 rounded-lg border ' +
               (tab === k ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500')}>{l}</button>
         ))}
       </div>
 
-      {tab !== 'ageing' && (
+      {tab !== 'ageing' && tab !== 'billage' && (
         <div className="flex items-end gap-2 mb-4 bg-white border border-slate-200 rounded-xl p-3">
           <label className="flex-1 text-[11px] font-semibold text-slate-500">From
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="mt-1 w-full border border-slate-200 rounded-lg px-2 py-2 text-[13px]" /></label>
@@ -45,6 +45,7 @@ export default function Reports() {
       {tab === 'collections' && <Collections from={from} to={to} />}
       {tab === 'ageing' && <Ageing />}
       {tab === 'activity' && <Activity from={from} to={to} />}
+      {tab === 'billage' && <BillAgeing />}
       {tab === 'svc' && <SalesVsColl from={from} to={to} />}
     </>
   )
@@ -167,5 +168,48 @@ function Activity({ from, to }) {
         </div>
       ))}
     </Section>
+  )
+}
+
+
+const BUCKET_LABEL = { age_0_30: '0–30', age_31_60: '31–60', age_61_90: '61–90', age_90p: '90+' }
+function BillAgeing() {
+  const [r, setR] = useState(null)
+  useEffect(() => { api.reportBillAgeing().then(setR) }, [])
+  if (!r) return <Spin />
+  const flat = () => {
+    const rows = [['Dealer', 'Bill No', 'Bill Date', 'Bill Amount', 'Unpaid', 'Age (days)', 'Bucket']]
+    r.dealers.forEach((d) => d.bills.forEach((b) => rows.push([d.name, b.bill_no, b.date, b.amount, b.unpaid, b.days, BUCKET_LABEL[b.bucket] + ' days'])))
+    return rows
+  }
+  return (
+    <>
+      <div className="flex justify-between items-center mb-2 px-0.5">
+        <div className="text-xs font-bold text-slate-600">Bill-wise ageing</div>
+        <ExportBtn onClick={() => exportSheet('bill-ageing.xlsx', flat())} />
+      </div>
+      {r.dealers.length === 0 ? (
+        <div className="text-center text-slate-400 text-sm py-12 bg-white border border-dashed border-slate-200 rounded-xl">Nothing outstanding.</div>
+      ) : r.dealers.map((d) => (
+        <div key={d.name} className="bg-white border border-slate-200 rounded-xl mb-3 overflow-hidden">
+          <div className="flex justify-between items-center px-3.5 py-2.5 bg-slate-50 border-b border-slate-200">
+            <div className="text-[14px] font-bold text-slate-800 truncate pr-2">{d.name}</div>
+            <div className="text-[14px] font-bold text-slate-900 shrink-0">{inr(d.outstanding)}</div>
+          </div>
+          {d.bills.map((b, i) => (
+            <div key={i} className="flex justify-between items-center px-3.5 py-2.5 border-b border-slate-50 last:border-0 text-[13px]">
+              <div className="min-w-0 pr-2">
+                <div className="font-semibold text-slate-800 truncate">{b.bill_no === 'Opening' ? 'Opening balance' : 'Bill ' + b.bill_no}</div>
+                <div className="text-[11px] text-slate-500">{b.date} · {b.days} days · <span className={b.bucket === 'age_90p' ? 'text-red-600 font-semibold' : ''}>{BUCKET_LABEL[b.bucket]} days</span></div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="font-bold text-slate-900">{inr(b.unpaid)}</div>
+                {b.unpaid !== b.amount && <div className="text-[10px] text-slate-400">of {inr(b.amount)}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </>
   )
 }

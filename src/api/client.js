@@ -54,6 +54,7 @@ export const api = {
   reportAgeing: () => USE_MOCK ? mock.reportAgeing() : http('/reports/ageing'),
   reportActivity: (from, to) => USE_MOCK ? mock.reportActivity() : http('/reports/activity?from=' + from + '&to=' + to),
   reportSalesVsColl: (from, to) => USE_MOCK ? mock.reportSalesVsColl() : http('/reports/sales-vs-collection?from=' + from + '&to=' + to),
+  reportBillAgeing: () => USE_MOCK ? mock.reportBillAgeing() : http('/reports/bill-ageing'),
   addBill: (id, bill) => USE_MOCK ? mock.addBill(id, bill) : http('/dealers/' + id + '/bills', { method: 'POST', body: bill }),
   seedDealer: (id, payload) => USE_MOCK ? mock.seedDealer(id, payload) : http('/dealers/' + id + '/seed', { method: 'POST', body: payload }),
   bulkBills: (bills) => USE_MOCK ? mock.bulkBills(bills) : http('/bills/bulk', { method: 'POST', body: { bills } }),
