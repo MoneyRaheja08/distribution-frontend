@@ -1,4 +1,5 @@
 import { inr } from '../lib/format.js'
+import { Trash2 } from 'lucide-react'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 function monthLabel(d) {
@@ -64,7 +65,7 @@ export function LedgerHeader({ name, outstanding, ageing = {}, creditLimit = 0, 
 }
 
 // Traditional khata: oldest at top, balance builds down, grouped by month.
-export function LedgerTable({ entries = [] }) {
+export function LedgerTable({ entries = [], onDelete }) {
   if (!entries.length) {
     return <div className="bg-white border border-slate-200 rounded-xl p-4 text-[12px] text-slate-400">No entries yet.</div>
   }
@@ -73,8 +74,8 @@ export function LedgerTable({ entries = [] }) {
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
       <div className="flex items-center px-3 py-2 bg-slate-50 border-b border-slate-200 text-[10.5px] font-bold text-slate-500 uppercase tracking-wide">
         <div className="flex-1">Particulars</div>
-        <div className="w-24 text-right">Debit</div>
-        <div className="w-24 text-right">Credit</div>
+        <div className="w-20 text-right">Debit</div>
+        <div className="w-20 text-right">Credit</div>
         <div className="w-24 text-right">Balance</div>
       </div>
       {entries.map((e, i) => {
@@ -92,9 +93,10 @@ export function LedgerTable({ entries = [] }) {
                 </div>
                 <div className="text-[11px] text-slate-400">{fmtDay(e.date)}</div>
               </div>
-              <div className="w-24 text-right font-semibold text-slate-800">{e.debit ? inr(e.debit) : ''}</div>
-              <div className="w-24 text-right font-semibold text-emerald-700">{e.credit ? inr(e.credit) : ''}</div>
+              <div className="w-20 text-right font-semibold text-slate-800">{e.debit ? inr(e.debit) : ''}</div>
+              <div className="w-20 text-right font-semibold text-emerald-700">{e.credit ? inr(e.credit) : ''}</div>
               <div className="w-24 text-right font-bold text-slate-900">{inr(e.balance)}</div>
+              {onDelete && <div className="w-7 text-right">{e.type === 'payment' && e.id ? <button onClick={() => onDelete(e)} className="text-red-400 hover:text-red-600 p-1"><Trash2 size={13} /></button> : null}</div>}
             </div>
           </div>
         )

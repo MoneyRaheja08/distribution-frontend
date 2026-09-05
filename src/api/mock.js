@@ -142,3 +142,5 @@ export const parseInvoice = () => wait({ bill_no: 'H00001', date: '2026-09-04', 
 
 export const pendingPayments = () => wait([])
 export const approvePayment = () => wait({ ok: true })
+
+export const deletePayment = () => wait({ ok: true })

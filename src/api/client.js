@@ -53,6 +53,7 @@ export const api = {
   bulkBills: (bills) => USE_MOCK ? mock.bulkBills(bills) : http('/bills/bulk', { method: 'POST', body: { bills } }),
   pendingPayments: () => USE_MOCK ? mock.pendingPayments() : http('/payments/pending'),
   approvePayment: (id, approved) => USE_MOCK ? mock.approvePayment(id, approved) : http('/payments/' + id + '/approve', { method: 'PATCH', body: { approved } }),
+  deletePayment: (id) => USE_MOCK ? mock.deletePayment(id) : http('/payments/' + id, { method: 'DELETE' }),
   parseInvoice: (file) => { if (USE_MOCK) return mock.parseInvoice(file); const fd = new FormData(); fd.append('file', file); return httpForm('/invoices/parse', fd) },
   delDealer: (id) => USE_MOCK ? mock.del('dealers', id) : http('/dealers/' + id, { method: 'DELETE' }),
 

@@ -76,7 +76,9 @@ function Ledger({ dealer, onBack }) {
         {isAdmin && <button onClick={() => setModal('statement')} className="flex-1 min-w-[30%] border border-slate-200 text-slate-600 text-[13px] font-semibold py-2.5 rounded-lg">Import statement</button>}
       </div>
       <div className="text-xs font-bold text-slate-600 mb-2 px-0.5">Ledger · oldest first</div>
-      <LedgerTable entries={led.entries} />
+      <LedgerTable entries={led.entries} onDelete={isAdmin ? async (e) => {
+        if (confirm('Delete this payment of ' + inr(e.credit) + '? The outstanding will go back up.')) { await api.deletePayment(e.id); load() }
+      } : undefined} />
       {modal === 'bill' && <BillModal dealer={dealer} onClose={() => setModal(null)} onDone={() => { setModal(null); load() }} />}
       {modal === 'statement' && <StatementModal dealer={dealer} onClose={() => setModal(null)} onDone={() => { setModal(null); load() }} />}
       {modal === 'collect' && <CollectModal dealer={dealer} outstanding={led.outstanding} onClose={() => setModal(null)} onDone={() => { setModal(null); load() }} />}
