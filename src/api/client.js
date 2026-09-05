@@ -53,6 +53,7 @@ export const api = {
   reportCollections: (from, to) => USE_MOCK ? mock.reportCollections() : http('/reports/collections?from=' + from + '&to=' + to),
   reportAgeing: () => USE_MOCK ? mock.reportAgeing() : http('/reports/ageing'),
   reportActivity: (from, to) => USE_MOCK ? mock.reportActivity() : http('/reports/activity?from=' + from + '&to=' + to),
+  reportSalesVsColl: (from, to) => USE_MOCK ? mock.reportSalesVsColl() : http('/reports/sales-vs-collection?from=' + from + '&to=' + to),
   addBill: (id, bill) => USE_MOCK ? mock.addBill(id, bill) : http('/dealers/' + id + '/bills', { method: 'POST', body: bill }),
   seedDealer: (id, payload) => USE_MOCK ? mock.seedDealer(id, payload) : http('/dealers/' + id + '/seed', { method: 'POST', body: payload }),
   bulkBills: (bills) => USE_MOCK ? mock.bulkBills(bills) : http('/bills/bulk', { method: 'POST', body: { bills } }),

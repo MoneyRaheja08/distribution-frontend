@@ -68,10 +68,10 @@ export default function Dashboard() {
             <div key={who} className="py-2 border-b border-slate-100 last:border-0">
               <div className="text-[13px] font-semibold text-slate-800">{who} <span className="text-slate-400 font-normal">· {vs.length} visit{vs.length > 1 ? 's' : ''}</span></div>
               <div className="mt-1 space-y-0.5">
-                {vs.slice().sort((a, b) => (a.first_ts || '').localeCompare(b.first_ts || '')).map((v, i) => (
+                {vs.map((v, i) => (
                   <div key={i} className="flex justify-between text-[12px] text-slate-500">
                     <span className="truncate pr-2">{v.dealer_name}</span>
-                    <span className="shrink-0 tabular-nums">{fmtTime(v.first_ts)}</span>
+                    <span className="shrink-0 tabular-nums">{v.time}</span>
                   </div>
                 ))}
               </div>

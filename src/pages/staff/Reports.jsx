@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx'
 import { Download } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { inr } from '../../lib/format.js'
-import { Spin, BackBtn } from '../../components/ui.jsx'
+import { Spin, BackBtn, Card } from '../../components/ui.jsx'
 
 const monthStart = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01` }
 const today = () => new Date().toISOString().slice(0, 10)
@@ -26,7 +26,7 @@ export default function Reports() {
       <div className="text-xs font-bold text-slate-600 mb-2.5 px-0.5">Reports</div>
 
       <div className="flex gap-1.5 mb-3 overflow-x-auto">
-        {[['collections', 'Collections'], ['ageing', 'Ageing'], ['activity', 'Activity']].map(([k, l]) => (
+        {[['collections', 'Collections'], ['ageing', 'Ageing'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']].map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
             className={'whitespace-nowrap text-[13px] font-semibold px-3.5 py-2 rounded-lg border ' +
               (tab === k ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500')}>{l}</button>
@@ -45,6 +45,7 @@ export default function Reports() {
       {tab === 'collections' && <Collections from={from} to={to} />}
       {tab === 'ageing' && <Ageing />}
       {tab === 'activity' && <Activity from={from} to={to} />}
+      {tab === 'svc' && <SalesVsColl from={from} to={to} />}
     </>
   )
 }
@@ -80,6 +81,14 @@ function Collections({ from, to }) {
       <Section title="By collector" action={<ExportBtn onClick={() => exportSheet('collections-by-collector.xlsx', [['Collector', 'Receipts', 'Amount'], ...r.by_collector.map((c) => [c.name, c.count, c.amount])])} />}>
         {r.by_collector.length === 0 ? <Row2 a="No collections in range" b="" /> : r.by_collector.map((c) => <Row2 key={c.name} a={`${c.name} · ${c.count}`} b={inr(c.amount)} />)}
       </Section>
+      <Section title="All entries" action={<ExportBtn onClick={() => exportSheet('collections.xlsx', [['Date', 'Dealer', 'Mode', 'Collector', 'Amount'], ...(r.rows || []).map((x) => [x.date, x.dealer, x.mode, x.collector, x.amount])])} />}>
+        {(r.rows || []).length === 0 ? <Row2 a="No collections in range" b="" /> : r.rows.map((x, i) => (
+          <div key={i} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
+            <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{x.dealer}</span><span className="font-bold text-emerald-700 shrink-0">{inr(x.amount)}</span></div>
+            <div className="text-[11px] text-slate-500 mt-0.5">{x.mode} · {x.collector} · {x.date}</div>
+          </div>
+        ))}
+      </Section>
     </>
   )
 }
@@ -108,6 +117,38 @@ function Ageing() {
           {r.over_limit.map((d) => <Row2 key={d.name} a={d.name} b={`${inr(d.outstanding)} / ${inr(d.limit)}`} />)}
         </Section>
       )}
+      <Section title="Dealer-wise ageing" action={<ExportBtn onClick={() => exportSheet('dealer-ageing.xlsx', [['Dealer', '0-30', '31-60', '61-90', '90+', 'Outstanding'], ...(r.dealers || []).map((d) => [d.name, d.age_0_30, d.age_31_60, d.age_61_90, d.age_90p, d.outstanding])])} />}>
+        {(r.dealers || []).length === 0 ? <Row2 a="Nothing outstanding" b="" /> : r.dealers.map((d) => (
+          <div key={d.name} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
+            <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{d.name}</span><span className="font-bold text-slate-900 shrink-0">{inr(d.outstanding)}</span></div>
+            <div className="text-[11px] text-slate-500 mt-0.5">0–30 {inr(d.age_0_30)} · 31–60 {inr(d.age_31_60)} · 61–90 {inr(d.age_61_90)} · <span className={d.age_90p > 0 ? 'text-red-600 font-semibold' : ''}>90+ {inr(d.age_90p)}</span></div>
+          </div>
+        ))}
+      </Section>
+    </>
+  )
+}
+
+function SalesVsColl({ from, to }) {
+  const [r, setR] = useState(null)
+  useEffect(() => { setR(null); api.reportSalesVsColl(from, to).then(setR) }, [from, to])
+  if (!r) return <Spin />
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-2.5 mb-3">
+        <Card n={inr(r.total_sales)} l="Total billed (sales)" />
+        <Card n={inr(r.total_collected)} l="Total collected" />
+      </div>
+      <Section title={`Per dealer · ${from} to ${to}`}
+        action={<ExportBtn onClick={() => exportSheet('sales-vs-collection.xlsx', [['Dealer', 'Sales', 'Collected', 'Net (sales-coll)'], ...r.rows.map((x) => [x.name, x.sales, x.collected, x.net])])} />}>
+        {r.rows.length === 0 ? <Row2 a="No activity in range" b="" /> : r.rows.map((x) => (
+          <div key={x.name} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
+            <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{x.name}</span>
+              <span className={'font-bold shrink-0 ' + (x.net > 0 ? 'text-red-600' : 'text-emerald-700')}>{x.net > 0 ? '+' : ''}{inr(x.net)}</span></div>
+            <div className="text-[11px] text-slate-500 mt-0.5">Billed {inr(x.sales)} · Collected {inr(x.collected)}</div>
+          </div>
+        ))}
+      </Section>
     </>
   )
 }
