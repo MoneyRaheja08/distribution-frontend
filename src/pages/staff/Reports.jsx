@@ -3,6 +3,10 @@ import { Download } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { inr } from '../../lib/format.js'
 import { exportSheet } from '../../lib/excel.js'
+import { renderTableImage } from '../../lib/tableImage.js'
+import { shareImage } from '../../lib/share.js'
+import { toast } from '../../lib/toast.js'
+import { useAuth } from '../../auth/AuthContext.jsx'
 import { Spin, BackBtn, Card, SkeletonList } from '../../components/ui.jsx'
 
 const monthStart = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01` }
@@ -208,6 +212,15 @@ function Activity({ from, to }) {
 }
 
 function BillAgeing() {
+  const { company } = useAuth()
+  const shareDealer = async (d) => {
+    const rows = d.bills.map((b) => [b.bill_no === 'Opening' ? 'Opening balance' : b.bill_no, b.date, b.amount, b.unpaid, b.days, BUCKET_LABEL[b.bucket] + ' days'])
+    const blob = await renderTableImage({ company: company?.name, title: d.name, subtitle: 'Bill ageing · Outstanding ' + inr(d.shown),
+      headers: [{ label: 'Bill No', w: 1.6 }, { label: 'Date', w: 1.2 }, { label: 'Amount', type: 'money', w: 1.3 }, { label: 'Unpaid', type: 'money', w: 1.3 }, { label: 'Age', type: 'num', w: 0.7 }, { label: 'Bucket', w: 1.2 }],
+      rows })
+    const res = await shareImage(blob, d.name + '-bill-ageing.png', d.name + ' — outstanding ' + inr(d.shown))
+    if (res === 'downloaded') toast.info('Image saved — attach it in WhatsApp')
+  }
   const [r, setR] = useState(null)
   const [q, setQ] = useState('')
   const [bucket, setBucket] = useState('All')
@@ -241,9 +254,12 @@ function BillAgeing() {
         <div className="text-center text-slate-400 text-sm py-12 bg-white border border-dashed border-slate-200 rounded-xl">No bills match.</div>
       ) : dealers.map((d) => (
         <div key={d.name} className="bg-white border border-slate-200 rounded-xl mb-3 overflow-hidden">
-          <div className="flex justify-between items-center px-3.5 py-2.5 bg-slate-50 border-b border-slate-200">
-            <div className="text-[14px] font-bold text-slate-800 truncate pr-2">{d.name}</div>
-            <div className="text-[14px] font-bold text-slate-900 shrink-0">{inr(d.shown)}</div>
+          <div className="flex justify-between items-center px-3.5 py-2.5 bg-slate-50 border-b border-slate-200 gap-2">
+            <div className="text-[14px] font-bold text-slate-800 truncate">{d.name}</div>
+            <div className="flex items-center gap-3 shrink-0">
+              <button onClick={() => shareDealer(d)} className="text-[12px] font-semibold text-[#075E54]">Share</button>
+              <div className="text-[14px] font-bold text-slate-900">{inr(d.shown)}</div>
+            </div>
           </div>
           {d.bills.map((b, i) => (
             <div key={i} className="flex justify-between items-center px-3.5 py-2.5 border-b border-slate-50 last:border-0 text-[13px]">

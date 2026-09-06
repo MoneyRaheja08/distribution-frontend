@@ -165,3 +165,13 @@ store.companies = [{ id: 'c1', name: 'Ashoka Sales' }, { id: 'c2', name: 'Ashoka
 export const companies = () => wait(store.companies.map((c) => ({ ...c })))
 export const createCompany = (name) => { const c = { id: 'c' + Date.now(), name }; store.companies.push(c); return wait(c) }
 export const renameCompany = (id, name) => { const c = store.companies.find((x) => x.id === id); if (c) c.name = name; return wait(c) }
+
+store.orders = []
+export const orders = () => wait(store.orders.map((o) => ({ ...o })))
+export const createOrder = (b) => { const o = { ...b, id: 'o' + Date.now(), status: 'pending', total: b.items.reduce((s, i) => s + i.dp * i.qty, 0), created_by: 'You', date: 'today' }; store.orders.unshift(o); return wait(o) }
+export const executeOrder = (id, bill_no) => { const o = store.orders.find((x) => x.id === id); if (o) { o.status = 'executed'; o.bill_no = bill_no } return wait({ ok: true }) }
+export const deleteOrder = (id) => { store.orders = store.orders.filter((x) => x.id !== id); return wait({ ok: true }) }
+
+export const addProduct = (plid, b) => { const p = { ...b, id: 'x' + Date.now() }; (store.plproducts[plid] = store.plproducts[plid] || []).push(p); return wait(p) }
+export const updateProduct = (plid, pid, b) => { const arr = store.plproducts[plid] || []; const i = arr.findIndex((x) => x.id === pid); if (i > -1) arr[i] = { ...arr[i], ...b }; return wait(arr[i]) }
+export const deleteProduct = (plid, pid) => { store.plproducts[plid] = (store.plproducts[plid] || []).filter((x) => x.id !== pid); return wait({ ok: true }) }

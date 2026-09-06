@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LogOut, LayoutDashboard, Store, Package, Tag, Wallet, ClipboardList, BarChart3, ClipboardCheck, FileBarChart, Users } from 'lucide-react'
+import { LogOut, LayoutDashboard, Store, Package, Tag, Wallet, ClipboardList, BarChart3, ClipboardCheck, FileBarChart, Users, ShoppingCart } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
 import SyncStatus from './SyncStatus.jsx'
 
@@ -7,8 +7,8 @@ const ICONS = {
   '/': null, '/dealers': Store, '/stock': Package, '/prices': Tag, '/money': Wallet, '/myday': BarChart3,
 }
 const NAV = {
-  collector: [['/', 'Beat', ClipboardList], ['/stock', 'Stock', Package], ['/myday', 'My day', BarChart3]],
-  staff: [['/', 'Overview', LayoutDashboard], ['/dealers', 'Dealers', Store], ['/stock', 'Stock', Package], ['/money', 'Money', Wallet]],
+  collector: [['/', 'Beat', ClipboardList], ['/orders', 'Orders', ShoppingCart], ['/stock', 'Stock', Package], ['/myday', 'My day', BarChart3]],
+  staff: [['/', 'Overview', LayoutDashboard], ['/dealers', 'Dealers', Store], ['/orders', 'Orders', ShoppingCart], ['/stock', 'Stock', Package], ['/money', 'Money', Wallet]],
 }
 
 export default function Shell() {

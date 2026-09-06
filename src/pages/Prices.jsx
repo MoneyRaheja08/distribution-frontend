@@ -85,10 +85,15 @@ function Btn({ icon: Icon, label, onClick, red }) {
 
 // ---- browse a single price list ----
 function Browse({ list, onBack }) {
+  const { auth } = useAuth()
+  const staff = auth.user.role === 'admin' || auth.user.role === 'manager'
   const [items, setItems] = useState(null)
   const [q, setQ] = useState('')
   const [cat, setCat] = useState('All')
-  useEffect(() => { api.pricelistProducts(list.id).then(setItems).catch(() => setItems([])) }, [list.id])
+  const [editing, setEditing] = useState(null)
+  const load = () => api.pricelistProducts(list.id).then(setItems).catch(() => setItems([]))
+  useEffect(() => { load() }, [list.id])
+  const delProduct = async (p) => { if (await confirmDialog('Delete ' + p.model + '?', { danger: true, confirmLabel: 'Delete' })) { await api.deleteProduct(list.id, p.id); toast.success('Deleted'); load() } }
 
   const categories = useMemo(() => items ? ['All', ...Array.from(new Set(items.map((p) => p.category)))] : [], [items])
   const filtered = useMemo(() => {
@@ -101,7 +106,10 @@ function Browse({ list, onBack }) {
   if (!items) return <Spin />
   return (
     <>
-      <button onClick={onBack} className="flex items-center gap-1 text-sm font-semibold text-slate-600 mb-2 -ml-1">‹ Price lists</button>
+      <div className="flex items-center justify-between mb-2">
+        <button onClick={onBack} className="flex items-center gap-1 text-sm font-semibold text-slate-600 -ml-1">‹ Price lists</button>
+        {staff && <button onClick={() => setEditing({})} className="text-[12px] font-semibold text-emerald-700 bg-emerald-50 rounded-full px-3 py-1.5">+ Add product</button>}
+      </div>
       <div className="text-base font-bold mb-3">{list.name}</div>
       <div className="relative mb-3">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -138,7 +146,37 @@ function Browse({ list, onBack }) {
           </div>
         ))}
       </div>
+      {editing && <ProductForm list={list} product={editing} onClose={() => setEditing(null)} onDone={() => { setEditing(null); load() }} />}
     </>
+  )
+}
+
+function ProductForm({ list, product, onClose, onDone }) {
+  const [f, setF] = useState({ category: product.category || '', model: product.model || '', description: product.description || '', mrp: product.mrp ?? '', dp: product.dp ?? '', nlc: product.nlc ?? '' })
+  const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
+  const save = async () => {
+    if (!f.model.trim()) return toast.error('Model is required')
+    const body = { category: f.category || 'General', model: f.model.trim(), description: f.description, mrp: +f.mrp || 0, dp: +f.dp || 0, nlc: +f.nlc || 0 }
+    try {
+      if (product.id) await api.updateProduct(list.id, product.id, body)
+      else await api.addProduct(list.id, body)
+      toast.success('Saved'); onDone()
+    } catch (e) { toast.error(e.message) }
+  }
+  return (
+    <Modal title={product.id ? 'Edit product' : 'Add product'} onClose={onClose}>
+      <Field label="Model / name" value={f.model} onChange={(v) => set('model', v)} />
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Category" value={f.category} onChange={(v) => set('category', v)} />
+        <Field label="Description" value={f.description} onChange={(v) => set('description', v)} />
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="MRP" value={f.mrp} onChange={(v) => set('mrp', v)} type="number" />
+        <Field label="DP" value={f.dp} onChange={(v) => set('dp', v)} type="number" />
+        <Field label="NLC" value={f.nlc} onChange={(v) => set('nlc', v)} type="number" />
+      </div>
+      <button onClick={save} className="w-full bg-emerald-700 text-white font-semibold py-3 rounded-xl mt-1">Save</button>
+    </Modal>
   )
 }
 

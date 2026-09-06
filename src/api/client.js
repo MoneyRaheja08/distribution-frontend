@@ -50,6 +50,10 @@ export const api = {
   login: (name, pin) => USE_MOCK ? mock.login(name, pin) : http('/auth/login', { method: 'POST', body: { name, pin } }),
   companies: () => USE_MOCK ? mock.companies() : http('/companies'),
   createCompany: (name) => USE_MOCK ? mock.createCompany(name) : http('/companies', { method: 'POST', body: { name } }),
+  orders: (status) => USE_MOCK ? mock.orders(status) : http('/orders' + (status ? '?status=' + status : '')),
+  createOrder: (body) => USE_MOCK ? mock.createOrder(body) : http('/orders', { method: 'POST', body }),
+  executeOrder: (id, bill_no) => USE_MOCK ? mock.executeOrder(id, bill_no) : http('/orders/' + id + '/execute', { method: 'PATCH', body: { bill_no } }),
+  deleteOrder: (id) => USE_MOCK ? mock.deleteOrder(id) : http('/orders/' + id, { method: 'DELETE' }),
   renameCompany: (id, name) => USE_MOCK ? mock.renameCompany(id, name) : http('/companies/' + id, { method: 'PATCH', body: { name } }),
 
   summary: () => USE_MOCK ? mock.summary() : http('/payments/summary'),
@@ -99,5 +103,8 @@ export const api = {
   deletePricelist: (id) => USE_MOCK ? mock.deletePricelist(id) : http('/pricelists/' + id, { method: 'DELETE' }),
   pricelistProducts: (id) => USE_MOCK ? mock.pricelistProducts(id) : http('/pricelists/' + id + '/products'),
   importPricelist: (id, products) => USE_MOCK ? mock.importPricelist(id, products) : http('/pricelists/' + id + '/products/bulk', { method: 'POST', body: { products } }),
+  addProduct: (plid, body) => USE_MOCK ? mock.addProduct(plid, body) : http('/pricelists/' + plid + '/products/one', { method: 'POST', body }),
+  updateProduct: (plid, pid, body) => USE_MOCK ? mock.updateProduct(plid, pid, body) : http('/pricelists/' + plid + '/products/' + pid, { method: 'PATCH', body }),
+  deleteProduct: (plid, pid) => USE_MOCK ? mock.deleteProduct(plid, pid) : http('/pricelists/' + plid + '/products/' + pid, { method: 'DELETE' }),
   selectableUsers: () => USE_MOCK ? mock.selectableUsers() : http('/users/selectable'),
 }
