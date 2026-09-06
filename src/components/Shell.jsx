@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { LogOut, LayoutDashboard, Store, Package, Tag, Wallet, ClipboardList, BarChart3, ClipboardCheck, FileBarChart, Users } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
+import SyncStatus from './SyncStatus.jsx'
 
 const ICONS = {
   '/': null, '/dealers': Store, '/stock': Package, '/prices': Tag, '/money': Wallet, '/myday': BarChart3,
@@ -66,6 +67,7 @@ export default function Shell() {
         <div className="flex min-h-0 flex-1 flex-col">
           <main className="flex-1 overflow-y-auto p-4 pb-28 lg:px-8 lg:py-8 lg:pb-8">
             <div className="mx-auto w-full max-w-2xl lg:max-w-4xl">
+              <SyncStatus />
               <Outlet />
             </div>
           </main>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { api } from '../../api/client.js'
+import { toast } from '../../lib/toast.js'
 import { inr } from '../../lib/format.js'
 import { Spin, BackBtn, Empty } from '../../components/ui.jsx'
 
@@ -10,7 +11,7 @@ export default function Approvals() {
   useEffect(() => { load() }, [])
   if (!items) return <Spin />
 
-  const act = async (id, approved) => { await api.approvePayment(id, approved); load() }
+  const act = async (id, approved) => { await api.approvePayment(id, approved); load(); toast.success(approved ? 'Approved' : 'Rejected') }
 
   return (
     <>

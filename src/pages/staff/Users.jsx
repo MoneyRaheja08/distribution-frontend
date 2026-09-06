@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../api/client.js'
+import { toast } from '../../lib/toast.js'
+import { confirmDialog } from '../../lib/confirm.js'
+import { exportWorkbook } from '../../lib/excel.js'
 import { Spin, SectionH, RowActions, BackBtn, Modal, Field, Select } from '../../components/ui.jsx'
 
 export default function Users() {
@@ -9,12 +12,21 @@ export default function Users() {
   useEffect(() => { reload() }, [])
   if (!data) return <Spin />
 
-  const del = async (id) => { if (confirm('Delete this user?')) { await api.delUser(id); reload() } }
+  const del = async (id) => { if (await confirmDialog('Delete this user?', { danger: true, confirmLabel: 'Delete' })) { await api.delUser(id); reload(); toast.success('User deleted') } }
+  const doBackup = async () => {
+    const b = await api.backup()
+    exportWorkbook('ashoka-backup-' + new Date().toISOString().slice(0, 10) + '.xlsx', [
+      { name: 'Dealers', aoa: [['Dealer', 'Area', 'Phone', 'Credit limit', 'Collector'], ...b.dealers.map((d) => [d.name, d.area, d.phone, d.credit_limit, d.collector])], money: [3] },
+      { name: 'Bills', aoa: [['Dealer', 'Bill No', 'Date', 'Amount'], ...b.bills.map((x) => [x.dealer, x.bill_no, x.date, x.amount])], money: [3] },
+      { name: 'Payments', aoa: [['Dealer', 'Amount', 'Mode', 'Cheque', 'Date', 'Status', 'Collector', 'Approved', 'Reconciled'], ...b.payments.map((p) => [p.dealer, p.amount, p.mode, p.cheque, p.date, p.status, p.collector, p.approved ? 'Yes' : 'No', p.reconciled ? 'Yes' : 'No'])], money: [1] },
+    ])
+  }
 
   return (
     <>
       <BackBtn label="Overview" />
       <SectionH onAdd={() => setEditing({ role: 'collector' })}>Users</SectionH>
+      <button onClick={doBackup} className="w-full mb-3 border border-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-[13px]">Download full backup (Excel)</button>
       <div className="space-y-2">
         {data.map((u) => (
           <div key={u.id} className="bg-white border border-slate-200 rounded-xl p-3.5 flex justify-between items-center">
@@ -35,10 +47,10 @@ function UserForm({ user, onClose, onSaved }) {
   const [f, setF] = useState({ name: user.name || '', pin: '', role: user.role || 'collector', can_collect: !!user.can_collect })
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
   const save = async () => {
-    if (!f.name.trim()) return alert('Name is required')
-    if (!user.id && f.pin.length !== 4) return alert('Set a 4-digit PIN')
+    if (!f.name.trim()) return toast.error('Name is required')
+    if (!user.id && f.pin.length !== 4) return toast.error('Set a 4-digit PIN')
     await api.saveUser({ id: user.id, name: f.name.trim(), role: f.role, can_collect: f.can_collect, ...(f.pin ? { pin: f.pin } : {}) })
-    onSaved()
+    toast.success('Saved'); onSaved()
   }
   return (
     <Modal title={user.id ? 'Edit user' : 'Add user'} onClose={onClose}>

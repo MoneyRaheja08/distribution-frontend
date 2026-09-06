@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Check, RotateCcw, Trash2 } from 'lucide-react'
 import { api } from '../../api/client.js'
+import { toast } from '../../lib/toast.js'
+import { confirmDialog } from '../../lib/confirm.js'
 import { inr } from '../../lib/format.js'
 import { Spin } from '../../components/ui.jsx'
 
@@ -10,8 +12,8 @@ export default function Reconcile() {
   const load = () => { setItems(null); api.collections(tab === 'done').then(setItems) }
   useEffect(() => { load() }, [tab])
 
-  const set = async (id, reconciled) => { await api.reconcilePayment(id, reconciled); load() }
-  const del = async (id, amount) => { if (confirm('Delete this payment of ' + inr(amount) + '? This removes it completely.')) { await api.deletePayment(id); load() } }
+  const set = async (id, reconciled) => { await api.reconcilePayment(id, reconciled); load(); toast.success(reconciled ? 'Reconciled' : 'Moved back') }
+  const del = async (id, amount) => { if (await confirmDialog('Delete this payment of ' + inr(amount) + '? This removes it completely.', { danger: true, confirmLabel: 'Delete' })) { await api.deletePayment(id); load(); toast.success('Payment deleted') } }
 
   return (
     <>

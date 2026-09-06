@@ -40,3 +40,25 @@ export function exportSheet(filename, aoa, opts = {}) {
   XLSX.utils.book_append_sheet(wb, ws, opts.sheet || 'Report')
   XLSX.writeFile(wb, filename)
 }
+
+
+// Multi-sheet workbook (used for full backup). sheets: [{name, aoa, money}]
+export function exportWorkbook(filename, sheets) {
+  const wb = XLSX.utils.book_new()
+  const bd = (rgb) => { const t = { style: 'thin', color: { rgb } }; return { top: t, bottom: t, left: t, right: t } }
+  sheets.forEach(({ name, aoa, money }) => {
+    const m = new Set(money || [])
+    const ncols = aoa.reduce((x, r) => Math.max(x, r.length), 0)
+    const ws = XLSX.utils.aoa_to_sheet(aoa)
+    for (let r = 0; r < aoa.length; r++) for (let c = 0; c < ncols; c++) {
+      const cell = ws[XLSX.utils.encode_cell({ r, c })]; if (!cell) continue
+      if (r === 0) { cell.s = { font: { bold: true, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '0E7C66' } }, border: bd('FFFFFF') }; continue }
+      const isMoney = m.has(c) && typeof cell.v === 'number'
+      cell.s = { border: bd('E2E8F0'), alignment: { horizontal: isMoney ? 'right' : 'left' } }
+      if (isMoney) cell.z = '[>=10000000]#,##,##,##0;[>=100000]#,##,##0;##,##0'
+    }
+    ws['!cols'] = Array.from({ length: ncols }, (_, c) => { let x = 9; for (const row of aoa) { const v = row[c]; const l = v == null ? 0 : String(v).length; if (l > x) x = l } return { wch: Math.min(x + 2, 40) } })
+    XLSX.utils.book_append_sheet(wb, ws, name)
+  })
+  XLSX.writeFile(wb, filename)
+}

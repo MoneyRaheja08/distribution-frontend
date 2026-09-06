@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../api/client.js'
+import { toast } from '../../lib/toast.js'
+import { confirmDialog } from '../../lib/confirm.js'
 import { inr } from '../../lib/format.js'
 import { Spin, SectionH, RowActions, Modal, Field } from '../../components/ui.jsx'
 
@@ -10,7 +12,7 @@ export default function Stock() {
   useEffect(() => { reload() }, [])
   if (!data) return <Spin />
 
-  const del = async (id) => { if (confirm('Delete this product?')) { await api.delStock(id); reload() } }
+  const del = async (id) => { if (await confirmDialog('Delete this product?', { danger: true, confirmLabel: 'Delete' })) { await api.delStock(id); reload(); toast.success('Product deleted') } }
 
   return (
     <>
@@ -41,7 +43,7 @@ function StockForm({ item, onClose, onSaved }) {
   const [f, setF] = useState({ name: item.name || '', price: item.price || '', qty: item.qty ?? '' })
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
   const save = async () => {
-    if (!f.name.trim()) return alert('Name is required')
+    if (!f.name.trim()) return toast.error('Name is required')
     await api.saveStock({ id: item.id, name: f.name.trim(), price: +f.price || 0, qty: +f.qty || 0 })
     onSaved()
   }

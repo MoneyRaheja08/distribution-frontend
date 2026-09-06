@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, Upload, FileText, Download } from 'lucide-react'
 import { api } from '../../api/client.js'
+import { toast } from '../../lib/toast.js'
+import { confirmDialog } from '../../lib/confirm.js'
 import { inr } from '../../lib/format.js'
 import { parseStatement, parseBulkBills, downloadBillsTemplate } from '../../lib/statement.js'
-import { Spin, SectionH, RowActions, Pill, Modal, Field, Select } from '../../components/ui.jsx'
+import { Spin, SectionH, RowActions, Pill, Modal, Field, Select, SkeletonList } from '../../components/ui.jsx'
 import { LedgerHeader, LedgerTable } from '../../components/Ledger.jsx'
 import { useAuth } from '../../auth/AuthContext.jsx'
+import { waLink, reminderText } from '../../lib/whatsapp.js'
+import { getPosition } from '../../lib/geo.js'
 
 export default function Dealers() {
   const { auth } = useAuth()
@@ -15,13 +19,14 @@ export default function Dealers() {
   const [editing, setEditing] = useState(null)
   const [ledgerOf, setLedgerOf] = useState(null)
   const [modal, setModal] = useState(null)
+  const [q, setQ] = useState('')
 
   const reload = () => api.dealers().then(setData)
   useEffect(() => { reload(); api.selectableUsers().then((us) => setCollectors(us.filter((u) => u.role === 'collector'))) }, [])
 
   if (ledgerOf) return <Ledger dealer={ledgerOf} onBack={() => { setLedgerOf(null); reload() }} />
-  if (!data) return <Spin />
-  const del = async (id) => { if (confirm('Delete this dealer and its ledger?')) { await api.delDealer(id); reload() } }
+  if (!data) return <><SectionH>Dealers</SectionH><SkeletonList rows={6} /></>
+  const del = async (id) => { if (await confirmDialog('Delete this dealer and its ledger?', { danger: true, confirmLabel: 'Delete' })) { await api.delDealer(id); reload(); toast.success('Dealer deleted') } }
 
   return (
     <>
@@ -30,9 +35,11 @@ export default function Dealers() {
         <button onClick={() => setModal('pdf')} className="flex-1 text-[12px] font-semibold text-slate-600 border border-slate-200 rounded-lg py-2 flex items-center justify-center gap-1"><FileText size={13} />Bill from PDF</button>
         {isAdmin && <button onClick={() => setModal('bulk')} className="flex-1 text-[12px] font-semibold text-slate-600 border border-slate-200 rounded-lg py-2 flex items-center justify-center gap-1"><Upload size={13} />Bulk bills</button>}
       </div>
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search dealer…"
+        className="w-full mb-3 border border-slate-200 rounded-lg px-3 py-2.5 bg-white text-base outline-none focus:border-emerald-500" />
       <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
         {data.length === 0 && <div className="text-center text-slate-400 text-sm py-10 bg-white border border-dashed border-slate-200 rounded-xl">No dealers yet. Tap Add, or import a statement.</div>}
-        {data.map((d) => {
+        {data.filter((d) => !q || d.name.toLowerCase().includes(q.toLowerCase()) || (d.area || '').toLowerCase().includes(q.toLowerCase())).map((d) => {
           const over = d.outstanding > d.credit_limit && d.credit_limit > 0
           return (
             <div key={d.id} className="bg-white border border-slate-200 rounded-xl p-3.5">
@@ -64,6 +71,7 @@ function Ledger({ dealer, onBack }) {
   const [led, setLed] = useState(null)
   const [modal, setModal] = useState(null)
   const [visited, setVisited] = useState(dealer.visited_today)
+  const [marking, setMarking] = useState(false)
   const load = () => api.dealerLedger(dealer.id).then(setLed)
   useEffect(() => { load() }, [dealer.id])
   if (!led) return <Spin />
@@ -71,9 +79,9 @@ function Ledger({ dealer, onBack }) {
     <>
       <div className="flex items-center justify-between mb-2">
         <button onClick={onBack} className="flex items-center gap-1 text-sm font-semibold text-slate-600 -ml-1">‹ Dealers</button>
-        <button onClick={async () => { if (!visited) { await api.markVisited(dealer.id); setVisited(true) } }}
-          className={'text-xs font-semibold px-3 py-1.5 rounded-lg ' + (visited ? 'bg-slate-100 text-slate-500' : 'bg-slate-900 text-white')}>
-          {visited ? 'Visited \u2713' : 'Mark visited'}
+        <button disabled={marking} onClick={async () => { if (!visited) { setMarking(true); const loc = await getPosition(); await api.markVisited(dealer.id, loc || {}); setVisited(true); setMarking(false) } }}
+          className={'text-xs font-semibold px-3 py-1.5 rounded-lg disabled:opacity-70 ' + (visited ? 'bg-slate-100 text-slate-500' : 'bg-slate-900 text-white')}>
+          {visited ? 'Visited \u2713' : marking ? 'Locating\u2026' : 'Mark visited'}
         </button>
       </div>
       <LedgerHeader name={led.dealer} outstanding={led.outstanding} ageing={led.ageing} creditLimit={led.credit_limit} lastPayment={led.last_payment} />
@@ -81,10 +89,11 @@ function Ledger({ dealer, onBack }) {
         <button onClick={() => setModal('bill')} className="flex-1 min-w-[30%] bg-emerald-700 text-white text-[13px] font-semibold py-2.5 rounded-lg">Add bill</button>
         {canCollect && led.outstanding > 0 && <button onClick={() => setModal('collect')} className="flex-1 min-w-[30%] bg-slate-900 text-white text-[13px] font-semibold py-2.5 rounded-lg">Record payment</button>}
         {isAdmin && <button onClick={() => setModal('statement')} className="flex-1 min-w-[30%] border border-slate-200 text-slate-600 text-[13px] font-semibold py-2.5 rounded-lg">Import statement</button>}
+        {led.outstanding > 0 && dealer.phone && <a href={waLink(dealer.phone, reminderText(led.dealer, led.outstanding, led.ageing))} target="_blank" rel="noreferrer" className="flex-1 min-w-[30%] text-center bg-[#25D366] text-white text-[13px] font-semibold py-2.5 rounded-lg">WhatsApp reminder</a>}
       </div>
       <div className="text-xs font-bold text-slate-600 mb-2 px-0.5">Ledger · oldest first</div>
       <LedgerTable entries={led.entries} onDelete={isAdmin ? async (e) => {
-        if (confirm('Delete this payment of ' + inr(e.credit) + '? The outstanding will go back up.')) { await api.deletePayment(e.id); load() }
+        if (await confirmDialog('Delete this payment of ' + inr(e.credit) + '? The outstanding will go back up.', { danger: true, confirmLabel: 'Delete' })) { await api.deletePayment(e.id); load(); toast.success('Payment deleted') }
       } : undefined} />
       {modal === 'bill' && <BillModal dealer={dealer} onClose={() => setModal(null)} onDone={() => { setModal(null); load() }} />}
       {modal === 'statement' && <StatementModal dealer={dealer} onClose={() => setModal(null)} onDone={() => { setModal(null); load() }} />}
@@ -99,12 +108,12 @@ function CollectModal({ dealer, outstanding, onClose, onDone }) {
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
   const save = async () => {
     const a = parseInt(f.amount || 0)
-    if (!a || a <= 0) return alert('Enter an amount')
-    if (a > outstanding) return alert('Amount exceeds outstanding of ' + inr(outstanding))
-    if (f.mode === 'Cheque' && !f.cheque.trim()) return alert('Enter cheque details')
+    if (!a || a <= 0) return toast.error('Enter an amount')
+    if (a > outstanding) return toast.error('Amount exceeds outstanding of ' + inr(outstanding))
+    if (f.mode === 'Cheque' && !f.cheque.trim()) return toast.error('Enter cheque details')
     setBusy(true)
-    try { await api.collect({ dealer_id: dealer.id, amount: a, mode: f.mode, cheque: f.cheque }); onDone() }
-    catch (err) { alert(err.message); setBusy(false) }
+    try { await api.collect({ dealer_id: dealer.id, amount: a, mode: f.mode, cheque: f.cheque }); toast.success('Payment recorded'); onDone() }
+    catch (err) { toast.error(err.message); setBusy(false) }
   }
   return (
     <Modal title={'Record payment — ' + dealer.name} onClose={onClose}>
@@ -130,7 +139,7 @@ function DealerForm({ dealer, collectors, onClose, onSaved }) {
   })
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
   const save = async () => {
-    if (!f.name.trim()) return alert('Name is required')
+    if (!f.name.trim()) return toast.error('Name is required')
     await api.saveDealer({
       id: dealer.id, name: f.name.trim(), area: f.area, phone: f.phone,
       credit_limit: +f.credit_limit || 0, collector_id: f.collector_id || null,
@@ -159,9 +168,9 @@ function BillModal({ dealer, onClose, onDone }) {
   const [f, setF] = useState({ bill_no: '', date: new Date().toISOString().slice(0, 10), amount: '' })
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
   const save = async () => {
-    if (!f.bill_no.trim() || !(+f.amount > 0)) return alert('Enter bill number and amount')
-    try { await api.addBill(dealer.id, { bill_no: f.bill_no.trim(), date: f.date, amount: +f.amount }); onDone() }
-    catch (err) { alert(err.message) }
+    if (!f.bill_no.trim() || !(+f.amount > 0)) return toast.error('Enter bill number and amount')
+    try { await api.addBill(dealer.id, { bill_no: f.bill_no.trim(), date: f.date, amount: +f.amount }); toast.success('Bill added'); onDone() }
+    catch (err) { toast.error(err.message) }
   }
   return (
     <Modal title={'Add bill \u2014 ' + dealer.name} onClose={onClose}>
@@ -189,7 +198,7 @@ function StatementModal({ dealer, onClose, onDone }) {
   const confirm = async () => {
     setBusy(true)
     await api.seedDealer(dealer.id, { opening: parsed.opening, opening_date: parsed.opening_date, bills: parsed.bills, payments: parsed.payments })
-    onDone()
+    toast.success('Statement imported'); onDone()
   }
   return (
     <Modal title={'Import statement \u2014 ' + dealer.name} onClose={onClose}>
@@ -268,12 +277,12 @@ function PdfModal({ dealers, onClose, onDone }) {
     } catch (err) { setMsg(err.message) } finally { setBusy(false); if (fileRef.current) fileRef.current.value = '' }
   }
   const save = async () => {
-    if (!dealerId) return alert('Pick the dealer this bill belongs to')
+    if (!dealerId) return toast.error('Pick the dealer this bill belongs to')
     setBusy(true)
     try {
       await api.addBill(dealerId, { bill_no: parsed.bill_no, date: parsed.date || new Date().toISOString().slice(0, 10), amount: parsed.amount })
-      onDone()
-    } catch (err) { alert(err.message); setBusy(false) }
+      toast.success('Bill added'); onDone()
+    } catch (err) { toast.error(err.message); setBusy(false) }
   }
   return (
     <Modal title="Add bill from invoice PDF" onClose={onClose}>

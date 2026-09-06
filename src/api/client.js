@@ -6,6 +6,10 @@ const USE_MOCK = String(import.meta.env.VITE_USE_MOCK) === 'true'
 let token = null
 export const setToken = (t) => { token = t }
 
+let lastSync = null
+export const getLastSync = () => lastSync
+function markSync() { lastSync = Date.now(); try { window.dispatchEvent(new Event('api:sync')) } catch { /* noop */ } }
+
 async function http(path, { method = 'GET', body } = {}) {
   const res = await fetch(BASE + path, {
     method,
@@ -20,7 +24,7 @@ async function http(path, { method = 'GET', body } = {}) {
     try { detail = (await res.json()).detail } catch { /* ignore */ }
     throw new Error(detail || `Request failed (${res.status})`)
   }
-  return res.json()
+  const data = await res.json(); markSync(); return data
 }
 
 async function httpForm(path, formData) {
@@ -34,7 +38,7 @@ async function httpForm(path, formData) {
     try { detail = (await res.json()).detail } catch { /* ignore */ }
     throw new Error(detail || `Request failed (${res.status})`)
   }
-  return res.json()
+  const data = await res.json(); markSync(); return data
 }
 
 // Each method maps 1:1 to a FastAPI endpoint. Flip VITE_USE_MOCK to switch.
@@ -48,13 +52,14 @@ export const api = {
   saveDealer: (d) => USE_MOCK ? mock.save('dealers', d)
     : http(d.id ? '/dealers/' + d.id : ('/dealers?opening_balance=' + (d.opening_balance || 0)), { method: d.id ? 'PATCH' : 'POST', body: d }),
   dealerLedger: (id) => USE_MOCK ? mock.dealerLedger(id) : http('/dealers/' + id + '/ledger'),
-  markVisited: (id) => USE_MOCK ? mock.markVisited(id) : http('/dealers/' + id + '/visit', { method: 'POST' }),
+  markVisited: (id, coords) => USE_MOCK ? mock.markVisited(id, coords) : http('/dealers/' + id + '/visit', { method: 'POST', body: coords || {} }),
   visitsToday: () => USE_MOCK ? mock.visitsToday() : http('/visits/today'),
   reportCollections: (from, to) => USE_MOCK ? mock.reportCollections() : http('/reports/collections?from=' + from + '&to=' + to),
   reportAgeing: () => USE_MOCK ? mock.reportAgeing() : http('/reports/ageing'),
   reportActivity: (from, to) => USE_MOCK ? mock.reportActivity() : http('/reports/activity?from=' + from + '&to=' + to),
   reportSalesVsColl: (from, to) => USE_MOCK ? mock.reportSalesVsColl() : http('/reports/sales-vs-collection?from=' + from + '&to=' + to),
   reportBillAgeing: () => USE_MOCK ? mock.reportBillAgeing() : http('/reports/bill-ageing'),
+  backup: () => USE_MOCK ? mock.backup() : http('/backup'),
   addBill: (id, bill) => USE_MOCK ? mock.addBill(id, bill) : http('/dealers/' + id + '/bills', { method: 'POST', body: bill }),
   seedDealer: (id, payload) => USE_MOCK ? mock.seedDealer(id, payload) : http('/dealers/' + id + '/seed', { method: 'POST', body: payload }),
   bulkBills: (bills) => USE_MOCK ? mock.bulkBills(bills) : http('/bills/bulk', { method: 'POST', body: { bills } }),

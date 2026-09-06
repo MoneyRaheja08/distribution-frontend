@@ -158,3 +158,5 @@ export const reportActivity = () => wait({ rows: [] })
 export const reportSalesVsColl = () => wait({ rows: [], total_sales: 0, total_collected: 0 })
 
 export const reportBillAgeing = () => wait({ dealers: [] })
+
+export const backup = () => wait({ dealers: [], bills: [], payments: [] })

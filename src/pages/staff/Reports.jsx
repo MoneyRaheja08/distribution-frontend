@@ -3,7 +3,7 @@ import { Download } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { inr } from '../../lib/format.js'
 import { exportSheet } from '../../lib/excel.js'
-import { Spin, BackBtn, Card } from '../../components/ui.jsx'
+import { Spin, BackBtn, Card, SkeletonList } from '../../components/ui.jsx'
 
 const monthStart = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01` }
 const today = () => new Date().toISOString().slice(0, 10)
@@ -67,7 +67,7 @@ function Row2({ a, b, bold }) {
 function Collections({ from, to }) {
   const [r, setR] = useState(null)
   useEffect(() => { setR(null); api.reportCollections(from, to).then(setR) }, [from, to])
-  if (!r) return <Spin />
+  if (!r) return <SkeletonList rows={5} />
   return (
     <>
       <Big label={`Total collected · ${from} to ${to}`} value={inr(r.total)} />
@@ -92,7 +92,7 @@ function Collections({ from, to }) {
 function Ageing() {
   const [r, setR] = useState(null)
   useEffect(() => { api.reportAgeing().then(setR) }, [])
-  if (!r) return <Spin />
+  if (!r) return <SkeletonList rows={5} />
   const AG = [['age_0_30', '0–30 days'], ['age_31_60', '31–60 days'], ['age_61_90', '61–90 days'], ['age_90p', '90+ days']]
   return (
     <>
@@ -128,7 +128,7 @@ function Ageing() {
 function SalesVsColl({ from, to }) {
   const [r, setR] = useState(null)
   useEffect(() => { setR(null); api.reportSalesVsColl(from, to).then(setR) }, [from, to])
-  if (!r) return <Spin />
+  if (!r) return <SkeletonList rows={5} />
   return (
     <>
       <div className="grid grid-cols-2 gap-2.5 mb-3">
@@ -152,7 +152,7 @@ function SalesVsColl({ from, to }) {
 function Activity({ from, to }) {
   const [r, setR] = useState(null)
   useEffect(() => { setR(null); api.reportActivity(from, to).then(setR) }, [from, to])
-  if (!r) return <Spin />
+  if (!r) return <SkeletonList rows={5} />
   return (
     <Section title={`Collector activity · ${from} to ${to}`}
       action={<ExportBtn onClick={() => exportSheet('activity.xlsx', [['Name', 'Collected', 'Receipts', 'Visits', 'Dealers visited'], ...r.rows.map((x) => [x.name, x.collected, x.receipts, x.visits, x.dealers_visited])], { money: [1], sheet: 'Activity' })} />}>
@@ -171,7 +171,7 @@ const BUCKET_LABEL = { age_0_30: '0–30', age_31_60: '31–60', age_61_90: '61�
 function BillAgeing() {
   const [r, setR] = useState(null)
   useEffect(() => { api.reportBillAgeing().then(setR) }, [])
-  if (!r) return <Spin />
+  if (!r) return <SkeletonList rows={5} />
   const build = () => {
     const rows = [['Bill No', 'Bill Date', 'Bill Amount', 'Unpaid', 'Age (days)', 'Bucket']]
     const bold = []
@@ -205,7 +205,7 @@ function BillAgeing() {
               </div>
               <div className="text-right shrink-0">
                 <div className="font-bold text-slate-900">{inr(b.unpaid)}</div>
-                {b.unpaid !== b.amount && <div className="text-[10px] text-slate-400">of {inr(b.amount)}</div>}
+                {b.unpaid !== b.amount && <div className="text-[10px] text-slate-400">of {inr(b.amount)} · {Math.round((1 - b.unpaid / b.amount) * 100)}% paid</div>}
               </div>
             </div>
           ))}

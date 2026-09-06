@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { api } from '../../api/client.js'
+import { toast } from '../../lib/toast.js'
 import { inr } from '../../lib/format.js'
 import { Spin, Empty } from '../../components/ui.jsx'
 
@@ -18,8 +19,8 @@ export default function Money() {
   const cashRows = Object.values(cashByCollector)
   const cheques = pays.filter((p) => p.status === 'pending')
 
-  const deposit = async (cid) => { await api.deposit(cid); reload() }
-  const chq = async (id, ok) => { await api.cheque(id, ok); reload() }
+  const deposit = async (cid) => { await api.deposit(cid); reload(); toast.success('Marked deposited') }
+  const chq = async (id, ok) => { await api.cheque(id, ok); reload(); toast.success(ok ? 'Cheque cleared' : 'Cheque bounced') }
 
   return (
     <>

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Search, Upload, Loader2, ChevronRight, Pencil, Trash2, Users as UsersIcon, Download, Plus } from 'lucide-react'
 import { api } from '../api/client.js'
+import { toast } from '../lib/toast.js'
+import { confirmDialog } from '../lib/confirm.js'
 import { inr } from '../lib/format.js'
 import { parseHaierWorkbook, parseStandardTemplate, downloadTemplate } from '../lib/pricelist.js'
 import { Spin, Modal, Field } from '../components/ui.jsx'
@@ -54,7 +56,7 @@ export default function Prices() {
                   <Btn icon={Upload} label="Import" onClick={() => setModal({ kind: 'import', list: pl })} />
                   <Btn icon={Pencil} label="Rename" onClick={() => setModal({ kind: 'rename', list: pl })} />
                   {isAdmin && <Btn icon={Trash2} label="Delete" red onClick={async () => {
-                    if (confirm('Delete “' + pl.name + '” and all its products?')) { await api.deletePricelist(pl.id); loadLists() }
+                    if (await confirmDialog('Delete “' + pl.name + '” and all its products?', { danger: true, confirmLabel: 'Delete' })) { await api.deletePricelist(pl.id); loadLists(); toast.success('Price list deleted') }
                   }} />}
                 </div>
               )}
@@ -114,6 +116,8 @@ function Browse({ list, onBack }) {
         ))}
       </div>
       <div className="text-[11px] text-slate-400 mb-2 px-0.5">{filtered.length} models</div>
+      {items.length === 0 && <div className="text-center text-slate-400 text-sm py-10 bg-white border border-dashed border-slate-200 rounded-xl">No products in this list yet.</div>}
+      {items.length > 0 && filtered.length === 0 && <div className="text-center text-slate-400 text-sm py-8">No models match your search.</div>}
       <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
         {filtered.map((p) => (
           <div key={p.id} className="bg-white border border-slate-200 rounded-xl p-3.5">

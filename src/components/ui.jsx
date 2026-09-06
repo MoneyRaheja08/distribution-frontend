@@ -93,3 +93,17 @@ export function Modal({ title, children, onClose }) {
     </div>
   )
 }
+
+
+export function SkeletonList({ rows = 6 }) {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="bg-white border border-slate-200 rounded-xl p-3.5 animate-pulse">
+          <div className="h-3.5 w-1/2 bg-slate-200 rounded mb-2" />
+          <div className="h-2.5 w-1/3 bg-slate-100 rounded" />
+        </div>
+      ))}
+    </div>
+  )
+}
