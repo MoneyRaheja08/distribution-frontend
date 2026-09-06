@@ -74,17 +74,20 @@ function Browse({ list, staff, onBack }) {
   const [modelCol, setModelCol] = useState(list.model_col || 'Model')
   const [priceCol, setPriceCol] = useState(list.price_col || 'DP')
   const [q, setQ] = useState('')
+  const [cat, setCat] = useState('All')
   const [editRow, setEditRow] = useState(null)
   const [settings, setSettings] = useState(false)
 
   const load = () => api.pricelistProducts(list.id).then(setItems).catch(() => setItems([]))
   useEffect(() => { load() }, [list.id])
 
+  const cats = useMemo(() => items ? ['All', ...Array.from(new Set(items.map((p) => p.cells?.Category).filter(Boolean)))] : ['All'], [items])
   const rows = useMemo(() => {
     if (!items) return []
     const n = q.trim().toLowerCase()
-    return items.filter((p) => !n || Object.values(p.cells || {}).some((v) => String(v).toLowerCase().includes(n)))
-  }, [items, q])
+    return items.filter((p) => (cat === 'All' || p.cells?.Category === cat) &&
+      (!n || Object.values(p.cells || {}).some((v) => String(v).toLowerCase().includes(n))))
+  }, [items, q, cat])
 
   const delRow = async (p) => { if (await confirmDialog('Delete this row?', { danger: true, confirmLabel: 'Delete' })) { await api.deleteProduct(list.id, p.id); toast.success('Deleted'); load() } }
   const delCol = async (c) => {
@@ -121,6 +124,17 @@ function Browse({ list, staff, onBack }) {
         </div>
       )}
 
+      {cats.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-1 -mx-1 px-1">
+          {cats.map((cName) => (
+            <button key={cName} onClick={() => setCat(cName)}
+              className={'whitespace-nowrap text-[12px] font-semibold px-3 py-1.5 rounded-full border ' +
+                (cat === cName ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500')}>
+              {cName === 'All' ? 'All sheets' : cName}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="relative mb-3">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 bg-white text-base outline-none focus:border-emerald-500" />
