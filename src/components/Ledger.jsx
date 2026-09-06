@@ -1,6 +1,7 @@
 import { inr } from '../lib/format.js'
 import { Trash2 } from 'lucide-react'
 
+const BUCKETS = { age_0_30: '0–30', age_31_60: '31–60', age_61_90: '61–90', age_90p: '90+' }
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 function monthLabel(d) {
   if (!d) return ''
@@ -91,7 +92,12 @@ export function LedgerTable({ entries = [], onDelete }) {
                 <div className="font-semibold text-slate-800 truncate">
                   {isBill ? (e.ref === 'Opening' ? 'Opening balance' : 'Bill ' + e.ref) : (e.mode || 'Payment') + (e.ref && e.ref !== e.mode ? ' ' + e.ref : '')}
                 </div>
-                <div className="text-[11px] text-slate-400">{fmtDay(e.date)}</div>
+                <div className="text-[11px] text-slate-400">
+                  {fmtDay(e.date)}
+                  {isBill && e.debit > 0 && e.days != null && e.ref !== 'Opening' && (
+                    <span className={e.bucket === 'age_90p' ? 'text-red-600 font-semibold' : ''}> · {e.days}d ({BUCKETS[e.bucket]})</span>
+                  )}
+                </div>
               </div>
               <div className="w-20 text-right font-semibold text-slate-800">{e.debit ? inr(e.debit) : ''}</div>
               <div className="w-20 text-right font-semibold text-emerald-700">{e.credit ? inr(e.credit) : ''}</div>
