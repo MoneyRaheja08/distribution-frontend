@@ -114,7 +114,14 @@ function NewOrder({ onClose, onDone }) {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => { api.dealers().then(setDealers); api.pricelists().then(setLists) }, [])
-  useEffect(() => { if (listId) api.pricelistProducts(listId).then(setProducts); else setProducts([]) }, [listId])
+  useEffect(() => {
+    if (!listId) { setProducts([]); return }
+    const pl = lists.find((l) => l.id === listId)
+    const mc = pl?.model_col || 'Model', pc = pl?.price_col || 'DP'
+    api.pricelistProducts(listId).then((ps) => setProducts(
+      ps.map((p) => ({ id: p.id, model: String(p.cells?.[mc] ?? ''), dp: Number(p.cells?.[pc]) || 0 })).filter((p) => p.model)
+    ))
+  }, [listId, lists])
 
   const filtered = useMemo(() => {
     const n = q.trim().toLowerCase()
@@ -123,7 +130,7 @@ function NewOrder({ onClose, onDone }) {
   const items = Object.values(cart)
   const total = items.reduce((s, i) => s + (i.dp || 0) * i.qty, 0)
 
-  const add = (p) => setCart((c) => ({ ...c, [p.model]: { model: p.model, description: p.description || '', dp: p.dp || 0, qty: (c[p.model]?.qty || 0) + 1 } }))
+  const add = (p) => setCart((c) => ({ ...c, [p.model]: { model: p.model, dp: p.dp || 0, qty: (c[p.model]?.qty || 0) + 1 } }))
   const dec = (m) => setCart((c) => { const it = c[m]; if (!it) return c; const qty = it.qty - 1; const n = { ...c }; if (qty <= 0) delete n[m]; else n[m] = { ...it, qty }; return n })
 
   const save = async () => {
@@ -132,7 +139,7 @@ function NewOrder({ onClose, onDone }) {
     setBusy(true)
     try {
       const pl = lists.find((l) => l.id === listId)
-      await api.createOrder({ dealer_id: dealerId, pricelist_name: pl?.name || '', note, items: items.map((i) => ({ model: i.model, description: i.description, dp: i.dp, qty: i.qty })) })
+      await api.createOrder({ dealer_id: dealerId, pricelist_name: pl?.name || '', note, items: items.map((i) => ({ model: i.model, dp: i.dp, qty: i.qty })) })
       toast.success('Order saved'); onDone()
     } catch (e) { toast.error(e.message); setBusy(false) }
   }

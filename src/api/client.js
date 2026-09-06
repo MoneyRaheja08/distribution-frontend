@@ -103,8 +103,10 @@ export const api = {
   deletePricelist: (id) => USE_MOCK ? mock.deletePricelist(id) : http('/pricelists/' + id, { method: 'DELETE' }),
   pricelistProducts: (id) => USE_MOCK ? mock.pricelistProducts(id) : http('/pricelists/' + id + '/products'),
   importPricelist: (id, products) => USE_MOCK ? mock.importPricelist(id, products) : http('/pricelists/' + id + '/products/bulk', { method: 'POST', body: { products } }),
-  addProduct: (plid, body) => USE_MOCK ? mock.addProduct(plid, body) : http('/pricelists/' + plid + '/products/one', { method: 'POST', body }),
-  updateProduct: (plid, pid, body) => USE_MOCK ? mock.updateProduct(plid, pid, body) : http('/pricelists/' + plid + '/products/' + pid, { method: 'PATCH', body }),
+  importFlexible: (plid, payload) => USE_MOCK ? mock.importFlexible(plid, payload) : http('/pricelists/' + plid + '/import', { method: 'POST', body: payload }),
+  addProduct: (plid, cells) => USE_MOCK ? mock.addProduct(plid, cells) : http('/pricelists/' + plid + '/products/one', { method: 'POST', body: { cells } }),
+  updateProduct: (plid, pid, cells) => USE_MOCK ? mock.updateProduct(plid, pid, cells) : http('/pricelists/' + plid + '/products/' + pid, { method: 'PATCH', body: { cells } }),
   deleteProduct: (plid, pid) => USE_MOCK ? mock.deleteProduct(plid, pid) : http('/pricelists/' + plid + '/products/' + pid, { method: 'DELETE' }),
+  deleteColumn: (plid, col) => USE_MOCK ? mock.deleteColumn(plid, col) : http('/pricelists/' + plid + '/columns/' + encodeURIComponent(col), { method: 'DELETE' }),
   selectableUsers: () => USE_MOCK ? mock.selectableUsers() : http('/users/selectable'),
 }

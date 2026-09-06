@@ -96,3 +96,40 @@ export function downloadTemplate() {
   XLSX.utils.book_append_sheet(wb, ws, 'Price List')
   XLSX.writeFile(wb, 'price-list-template.xlsx')
 }
+
+// ---- flexible import: keep EVERY column ----
+const _excelDate = (v) => {
+  if (v instanceof Date) return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}`
+  return v
+}
+export function parseFlexibleWorkbook(arrayBuffer) {
+  const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true })
+  const columns = ['Category']
+  const rows = []
+  for (const sheetName of wb.SheetNames) {
+    const grid = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' })
+    let h = -1, fallback = -1
+    for (let i = 0; i < Math.min(grid.length, 12); i++) {
+      const cells = grid[i].map((c) => String(c).trim())
+      if (cells.some((c) => /model/i.test(c))) { h = i; break }
+      if (fallback === -1 && cells.filter(Boolean).length >= 3) fallback = i
+    }
+    if (h === -1) h = fallback
+    if (h === -1) continue
+    const hdr = grid[h].map((c, i) => String(c).trim() || ('Col' + (i + 1)))
+    const cat = categoryFor(sheetName)
+    for (const c of hdr) if (!columns.includes(c)) columns.push(c)
+    for (let r = h + 1; r < grid.length; r++) {
+      const row = grid[r]
+      if (row.every((v) => String(v).trim() === '')) continue
+      const cells = { Category: cat }
+      let any = false
+      hdr.forEach((c, i) => { let v = row[i]; if (v !== '' && v != null) { cells[c] = _excelDate(v); any = true } })
+      if (any) rows.push(cells)
+    }
+  }
+  const model_col = columns.find((c) => /model/i.test(c)) || columns.find((c) => c !== 'Category') || 'Model'
+  const price_col = columns.find((c) => /^dp$/i.test(c)) || columns.find((c) => /dealer/i.test(c)) ||
+    columns.find((c) => /price|rate/i.test(c)) || columns.find((c) => /^mrp$/i.test(c)) || null
+  return { columns, model_col, price_col, rows }
+}

@@ -91,13 +91,12 @@ export const _setMe = (id, name, role) => { store._me = id; store._meName = name
 
 // ---- price lists (mock) ----
 store.pricelists = [
-  { id: 'pl1', name: 'Haier — Aug 2026', allowed_user_ids: ['u1', 'u2'] },
+  { id: 'pl1', name: 'Haier — Aug 2026', allowed_user_ids: ['u1', 'u2'], columns: ['Category', 'Model', 'MRP', 'DP', 'NLC'], model_col: 'Model', price_col: 'DP' },
 ]
 store.plproducts = {
   pl1: [
-    { id: 'x1', category: 'Air Conditioners', model: 'HSU-18 1.5T 3\u2605', description: '', mrp: 45000, dp: 32500, nlc: 26000 },
-    { id: 'x2', category: 'Refrigerators', model: 'HRD-2061 265L', description: '185', mrp: 22800, dp: 19400, nlc: 12125 },
-    { id: 'x3', category: 'Televisions', model: 'H55K85GUX 55" 4K', description: 'UHD Google TV', mrp: 73990, dp: 68590, nlc: 40170 },
+    { id: 'x1', cells: { Category: 'Air Conditioners', Model: 'HSU-18 1.5T', MRP: 45000, DP: 32500, NLC: 26000 } },
+    { id: 'x2', cells: { Category: 'Refrigerators', Model: 'HRD-2061 265L', MRP: 22800, DP: 19400, NLC: 12125 } },
   ],
 }
 const _canSee = (pl) => store._meRole === 'admin' || (pl.allowed_user_ids || []).includes(store._me)
@@ -106,7 +105,7 @@ export const pricelists = () => wait(
 )
 export const createPricelist = (body) => {
   const id = 'pl' + Date.now()
-  store.pricelists.push({ id, name: body.name, allowed_user_ids: body.allowed_user_ids || [] })
+  store.pricelists.push({ id, name: body.name, allowed_user_ids: body.allowed_user_ids || [], columns: ['Category', 'Model', 'MRP', 'DP', 'NLC'], model_col: 'Model', price_col: 'DP' })
   store.plproducts[id] = []
   return wait({ id, name: body.name, allowed_user_ids: body.allowed_user_ids || [], count: 0 })
 }
@@ -172,6 +171,8 @@ export const createOrder = (b) => { const o = { ...b, id: 'o' + Date.now(), stat
 export const executeOrder = (id, bill_no) => { const o = store.orders.find((x) => x.id === id); if (o) { o.status = 'executed'; o.bill_no = bill_no } return wait({ ok: true }) }
 export const deleteOrder = (id) => { store.orders = store.orders.filter((x) => x.id !== id); return wait({ ok: true }) }
 
-export const addProduct = (plid, b) => { const p = { ...b, id: 'x' + Date.now() }; (store.plproducts[plid] = store.plproducts[plid] || []).push(p); return wait(p) }
-export const updateProduct = (plid, pid, b) => { const arr = store.plproducts[plid] || []; const i = arr.findIndex((x) => x.id === pid); if (i > -1) arr[i] = { ...arr[i], ...b }; return wait(arr[i]) }
+export const importFlexible = (plid, payload) => { const pl = store.pricelists.find((x) => x.id === plid); if (pl) { pl.columns = payload.columns; pl.model_col = payload.model_col; pl.price_col = payload.price_col } store.plproducts[plid] = payload.rows.map((r, i) => ({ id: 'x' + i, cells: r })); return wait({ ok: true, count: payload.rows.length }) }
+export const deleteColumn = (plid, col) => { const pl = store.pricelists.find((x) => x.id === plid); if (pl) pl.columns = pl.columns.filter((c) => c !== col); (store.plproducts[plid] || []).forEach((pp) => { delete pp.cells[col] }); return wait({ ok: true }) }
+export const addProduct = (plid, cells) => { const p = { id: 'x' + Date.now(), cells }; (store.plproducts[plid] = store.plproducts[plid] || []).push(p); return wait(p) }
+export const updateProduct = (plid, pid, cells) => { const arr = store.plproducts[plid] || []; const i = arr.findIndex((x) => x.id === pid); if (i > -1) arr[i] = { ...arr[i], cells }; return wait(arr[i]) }
 export const deleteProduct = (plid, pid) => { store.plproducts[plid] = (store.plproducts[plid] || []).filter((x) => x.id !== pid); return wait({ ok: true }) }
