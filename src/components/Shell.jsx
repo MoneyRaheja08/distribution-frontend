@@ -24,15 +24,15 @@ export default function Shell() {
 
   return (
     <div className="min-h-screen bg-slate-200 font-sans lg:bg-slate-100">
-      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-100 shadow-2xl lg:max-w-none lg:flex-row lg:shadow-none">
+      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-100 shadow-2xl lg:h-screen lg:max-w-none lg:flex-row lg:overflow-hidden lg:shadow-none">
 
         {/* Desktop sidebar */}
-        <aside className="hidden shrink-0 flex-col bg-slate-900 text-white lg:flex lg:w-64">
+        <aside className="hidden shrink-0 flex-col bg-slate-900 text-white lg:flex lg:h-screen lg:w-64">
           <div className="px-5 py-5 border-b border-white/10">
             <div className="text-base font-extrabold tracking-tight">Ashoka Distribution</div>
             <div className="text-[11px] text-slate-400 mt-0.5">Collections &amp; stock</div>
           </div>
-          <nav className="flex-1 p-3 space-y-1">
+          <nav className="flex-1 overflow-y-auto p-3 space-y-1">
             {tabs.map(([to, label, Icon]) => (
               <NavLink key={to} to={to} end
                 className={({ isActive }) =>
