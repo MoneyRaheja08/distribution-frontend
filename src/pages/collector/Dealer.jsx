@@ -2,11 +2,15 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Phone, MapPin, Check } from 'lucide-react'
 import { api } from '../../api/client.js'
-import { outstanding } from '../../lib/format.js'
+import { inr, outstanding } from '../../lib/format.js'
 import { Spin, BackBtn } from '../../components/ui.jsx'
 import { LedgerHeader, LedgerTable } from '../../components/Ledger.jsx'
 import { waLink, reminderText } from '../../lib/whatsapp.js'
 import { getPosition } from '../../lib/geo.js'
+import { renderLedgerImage } from '../../lib/ledgerImage.js'
+import { shareImage } from '../../lib/share.js'
+import { toast } from '../../lib/toast.js'
+import { useAuth } from '../../auth/AuthContext.jsx'
 import { haptic } from '../../lib/haptics.js'
 
 export default function Dealer() {
@@ -16,6 +20,13 @@ export default function Dealer() {
   const [led, setLed] = useState(null)
   const [visited, setVisited] = useState(false)
   const [marking, setMarking] = useState(false)
+  const { company } = useAuth()
+  const shareStatement = async () => {
+    if (!led) return
+    const blob = await renderLedgerImage({ company: company?.name, dealer: led.dealer, outstanding: led.outstanding, ageing: led.ageing, lastPayment: led.last_payment, entries: led.entries })
+    const res = await shareImage(blob, (led.dealer || 'statement') + '.png', (d.name) + ' — outstanding ' + inr(o))
+    if (res === 'downloaded') toast.info('Image saved — attach it in WhatsApp')
+  }
 
   useEffect(() => {
     api.dealer(id).then((x) => { setD(x); setVisited(x.visited_today) })

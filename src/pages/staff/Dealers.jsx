@@ -10,6 +10,8 @@ import { LedgerHeader, LedgerTable } from '../../components/Ledger.jsx'
 import { useAuth } from '../../auth/AuthContext.jsx'
 import { waLink, reminderText } from '../../lib/whatsapp.js'
 import { getPosition } from '../../lib/geo.js'
+import { renderLedgerImage } from '../../lib/ledgerImage.js'
+import { shareImage } from '../../lib/share.js'
 
 export default function Dealers() {
   const { auth } = useAuth()
@@ -65,9 +67,14 @@ export default function Dealers() {
 }
 
 function Ledger({ dealer, onBack }) {
-  const { auth } = useAuth()
+  const { auth, company } = useAuth()
   const isAdmin = auth.user.role === 'admin'
   const canCollect = isAdmin || (auth.user.role === 'manager' && auth.user.can_collect)
+  const shareStatement = async () => {
+    const blob = await renderLedgerImage({ company: company?.name, dealer: led.dealer, outstanding: led.outstanding, ageing: led.ageing, lastPayment: led.last_payment, entries: led.entries })
+    const res = await shareImage(blob, (led.dealer || 'statement') + '.png', led.dealer + ' — outstanding ' + inr(led.outstanding))
+    if (res === 'downloaded') toast.info('Image saved — attach it in WhatsApp')
+  }
   const [led, setLed] = useState(null)
   const [modal, setModal] = useState(null)
   const [visited, setVisited] = useState(dealer.visited_today)
@@ -90,6 +97,7 @@ function Ledger({ dealer, onBack }) {
         {canCollect && led.outstanding > 0 && <button onClick={() => setModal('collect')} className="flex-1 min-w-[30%] bg-slate-900 text-white text-[13px] font-semibold py-2.5 rounded-lg">Record payment</button>}
         {isAdmin && <button onClick={() => setModal('statement')} className="flex-1 min-w-[30%] border border-slate-200 text-slate-600 text-[13px] font-semibold py-2.5 rounded-lg">Import statement</button>}
         {led.outstanding > 0 && dealer.phone && <a href={waLink(dealer.phone, reminderText(led.dealer, led.outstanding, led.ageing))} target="_blank" rel="noreferrer" className="flex-1 min-w-[30%] text-center bg-[#25D366] text-white text-[13px] font-semibold py-2.5 rounded-lg">WhatsApp reminder</a>}
+        <button onClick={shareStatement} className="flex-1 min-w-[30%] bg-[#075E54] text-white text-[13px] font-semibold py-2.5 rounded-lg">Share statement</button>
       </div>
       <div className="text-xs font-bold text-slate-600 mb-2 px-0.5">Ledger · oldest first</div>
       <LedgerTable entries={led.entries} onDelete={isAdmin ? async (e) => {
