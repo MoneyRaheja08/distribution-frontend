@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext.jsx'
 import Shell from './components/Shell.jsx'
 import Login from './pages/Login.jsx'
+import CompanyPicker from './pages/CompanyPicker.jsx'
 
 import Beat from './pages/collector/Beat.jsx'
 import Dealer from './pages/collector/Dealer.jsx'
@@ -20,7 +21,7 @@ import Reports from './pages/staff/Reports.jsx'
 import Prices from './pages/Prices.jsx'
 
 export default function App() {
-  const { auth } = useAuth()
+  const { auth, company } = useAuth()
 
   if (!auth) {
     return (
@@ -29,6 +30,8 @@ export default function App() {
       </Routes>
     )
   }
+
+  if (!company) return <CompanyPicker />
 
   const role = auth.user.role
 

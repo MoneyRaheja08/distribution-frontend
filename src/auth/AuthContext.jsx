@@ -1,11 +1,12 @@
 import { createContext, useContext, useState } from 'react'
-import { api, setToken } from '../api/client.js'
+import { api, setToken, setCompany } from '../api/client.js'
 import { _setMe } from '../api/mock.js'
 
 const AuthCtx = createContext(null)
 export const useAuth = () => useContext(AuthCtx)
 
 const STORE_KEY = 'ashoka_auth'
+const COMPANY_KEY = 'ashoka_company'
 
 export function AuthProvider({ children }) {
   const [auth, setAuth] = useState(() => {
@@ -20,6 +21,15 @@ export function AuthProvider({ children }) {
     } catch { /* ignore */ }
     return null
   })
+  const [company, setCompanyState] = useState(() => {
+    try { const raw = localStorage.getItem(COMPANY_KEY); if (raw) { const c = JSON.parse(raw); setCompany(c.id); return c } } catch { /* ignore */ }
+    return null
+  })
+  const selectCompany = (c) => {
+    if (c) { setCompany(c.id); localStorage.setItem(COMPANY_KEY, JSON.stringify(c)) }
+    else { setCompany(null); localStorage.removeItem(COMPANY_KEY) }
+    setCompanyState(c)
+  }
 
   const login = async (name, pin) => {
     const r = await api.login(name, pin)
@@ -33,9 +43,12 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     setToken(null)
+    setCompany(null)
     localStorage.removeItem(STORE_KEY)
+    localStorage.removeItem(COMPANY_KEY)
     setAuth(null)
+    setCompanyState(null)
   }
 
-  return <AuthCtx.Provider value={{ auth, login, logout }}>{children}</AuthCtx.Provider>
+  return <AuthCtx.Provider value={{ auth, company, selectCompany, login, logout }}>{children}</AuthCtx.Provider>
 }

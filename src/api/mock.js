@@ -160,3 +160,8 @@ export const reportSalesVsColl = () => wait({ rows: [], total_sales: 0, total_co
 export const reportBillAgeing = () => wait({ dealers: [] })
 
 export const backup = () => wait({ dealers: [], bills: [], payments: [] })
+
+store.companies = [{ id: 'c1', name: 'Ashoka Sales' }, { id: 'c2', name: 'Ashoka Enterprises' }]
+export const companies = () => wait(store.companies.map((c) => ({ ...c })))
+export const createCompany = (name) => { const c = { id: 'c' + Date.now(), name }; store.companies.push(c); return wait(c) }
+export const renameCompany = (id, name) => { const c = store.companies.find((x) => x.id === id); if (c) c.name = name; return wait(c) }

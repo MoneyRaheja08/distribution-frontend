@@ -44,12 +44,14 @@ export default function Users() {
 }
 
 function UserForm({ user, onClose, onSaved }) {
-  const [f, setF] = useState({ name: user.name || '', pin: '', role: user.role || 'collector', can_collect: !!user.can_collect })
+  const [f, setF] = useState({ name: user.name || '', pin: '', role: user.role || 'collector', can_collect: !!user.can_collect, company_ids: user.company_ids || [] })
+  const [companies, setCompanies] = useState([])
+  useEffect(() => { api.companies().then(setCompanies) }, [])
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
   const save = async () => {
     if (!f.name.trim()) return toast.error('Name is required')
     if (!user.id && f.pin.length !== 4) return toast.error('Set a 4-digit PIN')
-    await api.saveUser({ id: user.id, name: f.name.trim(), role: f.role, can_collect: f.can_collect, ...(f.pin ? { pin: f.pin } : {}) })
+    await api.saveUser({ id: user.id, name: f.name.trim(), role: f.role, can_collect: f.can_collect, company_ids: f.company_ids, ...(f.pin ? { pin: f.pin } : {}) })
     toast.success('Saved'); onSaved()
   }
   return (
@@ -71,6 +73,22 @@ function UserForm({ user, onClose, onSaved }) {
             <div className={'absolute top-0.5 w-5 h-5 bg-white rounded-full transition-all ' + (f.can_collect ? 'left-[22px]' : 'left-0.5')} />
           </div>
         </button>
+      )}
+      {f.role !== 'admin' && companies.length > 0 && (
+        <div className="mb-3">
+          <div className="text-xs font-semibold text-slate-600 mb-1.5">Companies this user can access</div>
+          <div className="space-y-1.5">
+            {companies.map((c) => {
+              const on = f.company_ids.includes(c.id)
+              return (
+                <button type="button" key={c.id} onClick={() => set('company_ids', on ? f.company_ids.filter((x) => x !== c.id) : [...f.company_ids, c.id])}
+                  className={'w-full flex items-center justify-between border rounded-lg px-3 py-2.5 text-[13px] font-semibold ' + (on ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600')}>
+                  {c.name}<span>{on ? '\u2713' : ''}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
       )}
       <button onClick={save} className="w-full bg-emerald-700 text-white font-semibold py-3 rounded-xl mt-2">Save</button>
     </Modal>

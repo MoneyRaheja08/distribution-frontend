@@ -6,6 +6,9 @@ const USE_MOCK = String(import.meta.env.VITE_USE_MOCK) === 'true'
 let token = null
 export const setToken = (t) => { token = t }
 
+let company = null
+export const setCompany = (c) => { company = c }
+
 let lastSync = null
 export const getLastSync = () => lastSync
 function markSync() { lastSync = Date.now(); try { window.dispatchEvent(new Event('api:sync')) } catch { /* noop */ } }
@@ -16,6 +19,7 @@ async function http(path, { method = 'GET', body } = {}) {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(company ? { 'X-Company-Id': company } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
   })
@@ -30,7 +34,7 @@ async function http(path, { method = 'GET', body } = {}) {
 async function httpForm(path, formData) {
   const res = await fetch(BASE + path, {
     method: 'POST',
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(company ? { 'X-Company-Id': company } : {}) },
     body: formData,
   })
   if (!res.ok) {
@@ -44,6 +48,9 @@ async function httpForm(path, formData) {
 // Each method maps 1:1 to a FastAPI endpoint. Flip VITE_USE_MOCK to switch.
 export const api = {
   login: (name, pin) => USE_MOCK ? mock.login(name, pin) : http('/auth/login', { method: 'POST', body: { name, pin } }),
+  companies: () => USE_MOCK ? mock.companies() : http('/companies'),
+  createCompany: (name) => USE_MOCK ? mock.createCompany(name) : http('/companies', { method: 'POST', body: { name } }),
+  renameCompany: (id, name) => USE_MOCK ? mock.renameCompany(id, name) : http('/companies/' + id, { method: 'PATCH', body: { name } }),
 
   summary: () => USE_MOCK ? mock.summary() : http('/payments/summary'),
 

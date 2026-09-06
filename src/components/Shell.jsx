@@ -12,7 +12,7 @@ const NAV = {
 }
 
 export default function Shell() {
-  const { auth, logout } = useAuth()
+  const { auth, company, selectCompany, logout } = useAuth()
   const nav = useNavigate()
   const role = auth.user.role
   let tabs = [...(role === 'collector' ? NAV.collector : NAV.staff)]
@@ -29,8 +29,8 @@ export default function Shell() {
         {/* Desktop sidebar */}
         <aside className="hidden shrink-0 flex-col bg-slate-900 text-white lg:flex lg:h-screen lg:w-64">
           <div className="px-5 py-5 border-b border-white/10">
-            <div className="text-base font-extrabold tracking-tight">Ashoka Distribution</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">Collections &amp; stock</div>
+            <div className="text-base font-extrabold tracking-tight">{company?.name || 'Ashoka Distribution'}</div>
+            <button onClick={() => selectCompany(null)} className="text-[11px] text-emerald-400 mt-0.5 hover:text-emerald-300">Switch company</button>
           </div>
           <nav className="flex-1 overflow-y-auto p-3 space-y-1">
             {tabs.map(([to, label, Icon]) => (
@@ -58,7 +58,7 @@ export default function Shell() {
           style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}>
           <div>
             <div className="text-base font-semibold leading-tight">{auth.user.name}</div>
-            <div className="text-[11px] text-slate-400">{subtitle} · Ashoka Distribution</div>
+            <div className="text-[11px] text-slate-400">{subtitle} · {company?.name}<button onClick={() => selectCompany(null)} className="text-emerald-400 ml-2">switch</button></div>
           </div>
           <button onClick={onLogout} className="rounded-lg p-1.5 text-slate-300 active:bg-white/10"><LogOut size={19} /></button>
         </div>
