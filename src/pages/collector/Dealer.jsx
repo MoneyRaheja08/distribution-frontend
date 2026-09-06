@@ -7,6 +7,7 @@ import { Spin, BackBtn } from '../../components/ui.jsx'
 import { LedgerHeader, LedgerTable } from '../../components/Ledger.jsx'
 import { waLink, reminderText } from '../../lib/whatsapp.js'
 import { getPosition } from '../../lib/geo.js'
+import { haptic } from '../../lib/haptics.js'
 
 export default function Dealer() {
   const { id } = useParams()
@@ -29,7 +30,7 @@ export default function Dealer() {
       <div className="flex items-center justify-between mb-2">
         <BackBtn label="Beat" />
         <div className="flex gap-2">
-          <button disabled={marking} onClick={async () => { if (!visited) { setMarking(true); const loc = await getPosition(); await api.markVisited(d.id, loc || {}); setVisited(true); setMarking(false) } }}
+          <button disabled={marking} onClick={async () => { if (!visited) { setMarking(true); const loc = await getPosition(); await api.markVisited(d.id, loc || {}); setVisited(true); setMarking(false); haptic(18) } }}
             className={'text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1 disabled:opacity-70 ' + (visited ? 'bg-slate-100 text-slate-500' : 'bg-slate-900 text-white')}>
             {visited ? <><Check size={13} />Visited</> : marking ? <><MapPin size={13} />Locating…</> : <><MapPin size={13} />Mark visited</>}
           </button>

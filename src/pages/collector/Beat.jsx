@@ -34,7 +34,7 @@ export default function Beat() {
                   : over ? <Pill tone="over">Over limit</Pill>
                   : old ? <Pill tone="old">{inr(d.ageing.age_90p)} · 90+ days</Pill> : null}
               </div>
-              <div className={'text-[15px] font-bold ' + (d.outstanding === 0 ? 'text-emerald-700' : '')}>{inr(d.outstanding)}</div>
+              <div className={'text-[16px] font-bold tracking-tight ' + (d.outstanding === 0 ? 'text-emerald-700' : '')}>{inr(d.outstanding)}</div>
             </button>
           )
         })}

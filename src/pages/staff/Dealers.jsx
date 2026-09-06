@@ -50,7 +50,7 @@ export default function Dealers() {
                   {over && <Pill tone="over">Over limit</Pill>}
                   {d.ageing?.age_90p > 0 && <Pill tone="old">90+ dues</Pill>}
                 </div>
-                <div className="text-[15px] font-bold">{inr(d.outstanding)}</div>
+                <div className="text-[16px] font-bold tracking-tight">{inr(d.outstanding)}</div>
               </button>
               <RowActions onEdit={() => setEditing(d)} onDel={isAdmin ? () => del(d.id) : null} />
             </div>

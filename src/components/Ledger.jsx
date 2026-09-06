@@ -25,7 +25,7 @@ export function LedgerHeader({ name, outstanding, ageing = {}, creditLimit = 0, 
     <div className="bg-white border border-slate-200 rounded-xl p-4 mb-3">
       {name && <div className="text-lg font-bold leading-tight">{name}</div>}
       <div className="flex items-baseline gap-2 mt-1">
-        <div className="text-2xl font-extrabold">{inr(outstanding)}</div>
+        <div className="text-[26px] font-extrabold tracking-tight">{inr(outstanding)}</div>
         <div className="text-[11px] text-slate-500">outstanding</div>
       </div>
 

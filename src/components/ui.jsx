@@ -23,7 +23,7 @@ export function SectionH({ children, onAdd }) {
 export function Card({ n, l, tone = '' }) {
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-3.5">
-      <div className={'text-lg font-extrabold ' + tone}>{n}</div>
+      <div className={'text-xl font-extrabold tracking-tight ' + tone}>{n}</div>
       <div className="text-[11px] text-slate-500 mt-0.5">{l}</div>
     </div>
   )
