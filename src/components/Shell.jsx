@@ -1,5 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { LogOut, LayoutDashboard, Store, Package, Tag, Wallet, ClipboardList, BarChart3, ClipboardCheck, FileBarChart, Users, ShoppingCart } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { RefreshCw } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
 import SyncStatus from './SyncStatus.jsx'
 
@@ -14,6 +16,14 @@ const NAV = {
 export default function Shell() {
   const { auth, company, selectCompany, logout } = useAuth()
   const nav = useNavigate()
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [refreshing, setRefreshing] = useState(false)
+  const [pull, setPull] = useState(0)
+  const startY = useRef(0); const pulling = useRef(false)
+  const doRefresh = () => { setRefreshing(true); setRefreshKey((k) => k + 1); setTimeout(() => setRefreshing(false), 700) }
+  const onTS = (e) => { const el = e.currentTarget; if (el.scrollTop <= 0) { startY.current = e.touches[0].clientY; pulling.current = true } }
+  const onTM = (e) => { if (!pulling.current) return; const dy = e.touches[0].clientY - startY.current; if (dy > 0) setPull(Math.min(dy * 0.5, 80)) }
+  const onTE = () => { if (!pulling.current) return; pulling.current = false; if (pull >= 60) doRefresh(); setPull(0) }
   const role = auth.user.role
   let tabs = [...(role === 'collector' ? NAV.collector : NAV.staff)]
   if (role === 'manager') tabs = tabs.filter(([to]) => to !== '/money')  // reconciliation is admin-only
@@ -65,10 +75,18 @@ export default function Shell() {
 
         {/* Content */}
         <div className="flex min-h-0 flex-1 flex-col">
-          <main className="flex-1 overflow-y-auto p-4 pb-28 lg:px-8 lg:py-8 lg:pb-8">
+          <main onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE} className="flex-1 overflow-y-auto p-4 pb-28 lg:px-8 lg:py-8 lg:pb-8">
+            <div className="flex items-end justify-center overflow-hidden lg:hidden" style={{ height: pull }}>
+              {(pull > 0 || refreshing) && <RefreshCw size={20} className={'text-slate-400 mb-1 ' + (refreshing || pull >= 60 ? 'animate-spin' : '')} />}
+            </div>
             <div className="mx-auto w-full max-w-2xl lg:max-w-4xl">
+              <div className="flex items-center justify-end -mb-1">
+                <button onClick={doRefresh} className="text-slate-400 hover:text-slate-600 p-1" title="Refresh">
+                  <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
+                </button>
+              </div>
               <SyncStatus />
-              <Outlet />
+              <div key={refreshKey}><Outlet /></div>
             </div>
           </main>
         </div>

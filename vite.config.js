@@ -8,6 +8,21 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon-192.png', 'icon-512.png', 'icon-512-maskable.png', 'apple-touch-icon.png'],
+      workbox: {
+        runtimeCaching: [
+          {
+            // API responses: fresh when online/fast, last-known data when slow/offline
+            urlPattern: ({ url }) => url.hostname.endsWith('onrender.com'),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
+      },
       manifest: {
         name: 'Ashoka Distribution',
         short_name: 'Ashoka',
