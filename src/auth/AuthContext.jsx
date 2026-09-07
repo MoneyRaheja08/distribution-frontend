@@ -1,12 +1,14 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
 import { api, setToken, setCompany } from '../api/client.js'
 import { _setMe } from '../api/mock.js'
+import { toast } from '../lib/toast.js'
 
 const AuthCtx = createContext(null)
 export const useAuth = () => useContext(AuthCtx)
 
 const STORE_KEY = 'ashoka_auth'
 const COMPANY_KEY = 'ashoka_company'
+const IDLE_MS = 5 * 60 * 1000  // auto-logout after 5 minutes idle
 
 export function AuthProvider({ children }) {
   const [auth, setAuth] = useState(() => {
@@ -49,6 +51,23 @@ export function AuthProvider({ children }) {
     setAuth(null)
     setCompanyState(null)
   }
+
+  useEffect(() => {
+    if (!auth) return
+    let last = Date.now()
+    const mark = () => { last = Date.now() }
+    const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'click', 'mousemove']
+    events.forEach((e) => window.addEventListener(e, mark, { passive: true }))
+    const iv = setInterval(() => {
+      if (Date.now() - last > IDLE_MS) {
+        clearInterval(iv)
+        events.forEach((e) => window.removeEventListener(e, mark))
+        toast.info('Logged out due to inactivity')
+        logout()
+      }
+    }, 15000)
+    return () => { clearInterval(iv); events.forEach((e) => window.removeEventListener(e, mark)) }
+  }, [auth])   // eslint-disable-line react-hooks/exhaustive-deps
 
   return <AuthCtx.Provider value={{ auth, company, selectCompany, login, logout }}>{children}</AuthCtx.Provider>
 }

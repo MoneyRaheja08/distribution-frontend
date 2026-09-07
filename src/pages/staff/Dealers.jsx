@@ -70,6 +70,7 @@ function Ledger({ dealer, onBack }) {
   const { auth, company } = useAuth()
   const isAdmin = auth.user.role === 'admin'
   const canCollect = isAdmin || (auth.user.role === 'manager' && auth.user.can_collect)
+  const canSeed = isAdmin || (auth.user.role === 'manager' && auth.user.can_import_statement && (led ? led.entries.length === 0 : false))
   const shareStatement = async () => {
     const blob = await renderLedgerImage({ company: company?.name, dealer: led.dealer, outstanding: led.outstanding, ageing: led.ageing, lastPayment: led.last_payment, entries: led.entries })
     const res = await shareImage(blob, (led.dealer || 'statement') + '.png', led.dealer + ' — outstanding ' + inr(led.outstanding))
@@ -95,7 +96,7 @@ function Ledger({ dealer, onBack }) {
       <div className="flex flex-wrap gap-2 mb-3">
         <button onClick={() => setModal('bill')} className="flex-1 min-w-[30%] bg-emerald-700 text-white text-[13px] font-semibold py-2.5 rounded-lg">Add bill</button>
         {canCollect && led.outstanding > 0 && <button onClick={() => setModal('collect')} className="flex-1 min-w-[30%] bg-slate-900 text-white text-[13px] font-semibold py-2.5 rounded-lg">Record payment</button>}
-        {isAdmin && <button onClick={() => setModal('statement')} className="flex-1 min-w-[30%] border border-slate-200 text-slate-600 text-[13px] font-semibold py-2.5 rounded-lg">Import statement</button>}
+        {canSeed && <button onClick={() => setModal('statement')} className="flex-1 min-w-[30%] border border-slate-200 text-slate-600 text-[13px] font-semibold py-2.5 rounded-lg">Import statement</button>}
         {led.outstanding > 0 && dealer.phone && <a href={waLink(dealer.phone, reminderText(led.dealer, led.outstanding, led.ageing))} target="_blank" rel="noreferrer" className="flex-1 min-w-[30%] text-center bg-[#25D366] text-white text-[13px] font-semibold py-2.5 rounded-lg">WhatsApp reminder</a>}
         <button onClick={shareStatement} className="flex-1 min-w-[30%] bg-[#075E54] text-white text-[13px] font-semibold py-2.5 rounded-lg">Share statement</button>
       </div>
