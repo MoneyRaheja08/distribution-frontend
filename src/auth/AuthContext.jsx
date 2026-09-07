@@ -52,6 +52,17 @@ export function AuthProvider({ children }) {
     setCompanyState(null)
   }
 
+  // Refresh the logged-in user's permissions when the app opens (so toggles apply without re-login)
+  useEffect(() => {
+    if (!auth) return
+    api.me().then((r) => {
+      if (r && r.user) {
+        const a = { ...auth, user: r.user }
+        setAuth(a); localStorage.setItem(STORE_KEY, JSON.stringify(a)); _setMe(r.user.id, r.user.name, r.user.role)
+      }
+    }).catch(() => { /* offline: keep cached */ })
+  }, [])   // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!auth) return
     let last = Date.now()

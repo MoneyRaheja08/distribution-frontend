@@ -48,6 +48,7 @@ async function httpForm(path, formData) {
 // Each method maps 1:1 to a FastAPI endpoint. Flip VITE_USE_MOCK to switch.
 export const api = {
   login: (name, pin) => USE_MOCK ? mock.login(name, pin) : http('/auth/login', { method: 'POST', body: { name, pin } }),
+  me: () => USE_MOCK ? mock.me() : http('/auth/me'),
   companies: () => USE_MOCK ? mock.companies() : http('/companies'),
   createCompany: (name) => USE_MOCK ? mock.createCompany(name) : http('/companies', { method: 'POST', body: { name } }),
   orders: (status) => USE_MOCK ? mock.orders(status) : http('/orders' + (status ? '?status=' + status : '')),

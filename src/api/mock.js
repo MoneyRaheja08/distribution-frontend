@@ -176,3 +176,5 @@ export const deleteColumn = (plid, col) => { const pl = store.pricelists.find((x
 export const addProduct = (plid, cells) => { const p = { id: 'x' + Date.now(), cells }; (store.plproducts[plid] = store.plproducts[plid] || []).push(p); return wait(p) }
 export const updateProduct = (plid, pid, cells) => { const arr = store.plproducts[plid] || []; const i = arr.findIndex((x) => x.id === pid); if (i > -1) arr[i] = { ...arr[i], cells }; return wait(arr[i]) }
 export const deleteProduct = (plid, pid) => { store.plproducts[plid] = (store.plproducts[plid] || []).filter((x) => x.id !== pid); return wait({ ok: true }) }
+
+export const me = () => wait({ user: store.users.find((u) => u.id === store._me) || null })
