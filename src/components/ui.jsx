@@ -22,9 +22,9 @@ export function SectionH({ children, onAdd }) {
 
 export function Card({ n, l, tone = '' }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-3.5">
-      <div className={'text-xl font-extrabold tracking-tight ' + tone}>{n}</div>
-      <div className="text-[11px] text-slate-500 mt-0.5">{l}</div>
+    <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{l}</div>
+      <div className={'text-2xl font-extrabold tracking-tight mt-1 ' + tone}>{n}</div>
     </div>
   )
 }
@@ -86,7 +86,7 @@ export function Modal({ title, children, onClose }) {
   return (
     <div className="fixed inset-0 bg-slate-900/40 flex items-end lg:items-center lg:justify-center z-30"
       onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-slate-100 w-full max-w-md rounded-t-3xl lg:rounded-2xl p-5 max-h-[92%] overflow-y-auto lg:shadow-2xl">
+      <div className="bg-white w-full max-w-md rounded-t-3xl lg:rounded-2xl p-5 max-h-[92%] overflow-y-auto lg:shadow-2xl">
         <div className="text-base font-bold mb-4">{title}</div>
         {children}
       </div>

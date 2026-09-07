@@ -35,14 +35,17 @@ export default function Shell() {
   const onLogout = () => { logout(); nav('/') }
 
   return (
-    <div className="min-h-screen bg-slate-200 font-sans lg:bg-slate-100">
+    <div className="min-h-screen bg-slate-100 font-sans lg:bg-slate-50">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-100 shadow-2xl lg:h-screen lg:max-w-none lg:flex-row lg:overflow-hidden lg:shadow-none">
 
         {/* Desktop sidebar */}
         <aside className="hidden shrink-0 flex-col bg-slate-900 text-white lg:flex lg:h-screen lg:w-64">
-          <div className="px-5 py-5 border-b border-white/10">
-            <div className="text-base font-extrabold tracking-tight">{company?.name || 'Ashoka Distribution'}</div>
-            <button onClick={() => selectCompany(null)} className="text-[11px] text-emerald-400 mt-0.5 hover:text-emerald-300">Switch company</button>
+          <div className="px-5 py-5 border-b border-white/10 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-extrabold text-lg shrink-0">₹</div>
+            <div className="min-w-0">
+              <div className="text-[15px] font-extrabold tracking-tight truncate">{company?.name || 'Ashoka Distribution'}</div>
+              <button onClick={() => selectCompany(null)} className="text-[11px] text-emerald-400 hover:text-emerald-300">Switch company</button>
+            </div>
           </div>
           <nav className="flex-1 overflow-y-auto p-3 space-y-1">
             {tabs.map(([to, label, Icon]) => (
