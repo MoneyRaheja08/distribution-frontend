@@ -28,7 +28,9 @@ export default function Shell() {
   let tabs = [...(role === 'collector' ? NAV.collector : NAV.staff)]
   if (role === 'manager') tabs = tabs.filter(([to]) => to !== '/money')  // reconciliation is admin-only
   tabs.splice(tabs.length - 1, 0, ['/prices', 'Prices', Tag])
-  if (role === 'admin') tabs.push(['/reconcile', 'Reconcile', ClipboardCheck], ['/reports', 'Reports', FileBarChart], ['/users', 'Users', Users])
+  if (role === 'admin') tabs.push(['/reconcile', 'Reconcile', ClipboardCheck])
+  if (role === 'admin' || auth.user.can_view_reports) tabs.push(['/reports', 'Reports', FileBarChart])
+  if (role === 'admin') tabs.push(['/users', 'Users', Users])
   const subtitle = role === 'collector' ? 'Collector' : role === 'admin' ? 'Admin' : 'Manager'
   const onLogout = () => { logout(); nav('/') }
 

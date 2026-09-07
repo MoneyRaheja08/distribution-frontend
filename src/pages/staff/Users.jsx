@@ -44,14 +44,14 @@ export default function Users() {
 }
 
 function UserForm({ user, onClose, onSaved }) {
-  const [f, setF] = useState({ name: user.name || '', pin: '', role: user.role || 'collector', can_collect: !!user.can_collect, can_import_statement: !!user.can_import_statement, company_ids: user.company_ids || [] })
+  const [f, setF] = useState({ name: user.name || '', pin: '', role: user.role || 'collector', can_collect: !!user.can_collect, can_import_statement: !!user.can_import_statement, can_view_reports: !!user.can_view_reports, company_ids: user.company_ids || [] })
   const [companies, setCompanies] = useState([])
   useEffect(() => { api.companies().then(setCompanies) }, [])
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
   const save = async () => {
     if (!f.name.trim()) return toast.error('Name is required')
     if (!user.id && f.pin.length !== 4) return toast.error('Set a 4-digit PIN')
-    await api.saveUser({ id: user.id, name: f.name.trim(), role: f.role, can_collect: f.can_collect, can_import_statement: f.can_import_statement, company_ids: f.company_ids, ...(f.pin ? { pin: f.pin } : {}) })
+    await api.saveUser({ id: user.id, name: f.name.trim(), role: f.role, can_collect: f.can_collect, can_import_statement: f.can_import_statement, can_view_reports: f.can_view_reports, company_ids: f.company_ids, ...(f.pin ? { pin: f.pin } : {}) })
     toast.success('Saved'); onSaved()
   }
   return (
@@ -83,6 +83,18 @@ function UserForm({ user, onClose, onSaved }) {
           </div>
           <div className={'w-11 h-6 rounded-full relative transition-colors ' + (f.can_import_statement ? 'bg-emerald-600' : 'bg-slate-300')}>
             <div className={'absolute top-0.5 w-5 h-5 bg-white rounded-full transition-all ' + (f.can_import_statement ? 'left-[22px]' : 'left-0.5')} />
+          </div>
+        </button>
+      )}
+      {f.role !== 'admin' && (
+        <button type="button" onClick={() => set('can_view_reports', !f.can_view_reports)}
+          className="w-full flex items-center justify-between border border-slate-200 rounded-lg px-3 py-3 bg-white mb-1">
+          <div className="text-left">
+            <div className="text-[13px] font-semibold text-slate-700">Can view reports</div>
+            <div className="text-[11px] text-slate-500">Access the Reports section</div>
+          </div>
+          <div className={'w-11 h-6 rounded-full relative transition-colors ' + (f.can_view_reports ? 'bg-emerald-600' : 'bg-slate-300')}>
+            <div className={'absolute top-0.5 w-5 h-5 bg-white rounded-full transition-all ' + (f.can_view_reports ? 'left-[22px]' : 'left-0.5')} />
           </div>
         </button>
       )}

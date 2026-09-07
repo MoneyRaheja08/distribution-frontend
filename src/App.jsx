@@ -35,6 +35,7 @@ export default function App() {
   if (!company) return <CompanyPicker />
 
   const role = auth.user.role
+  const canReports = role === 'admin' || auth.user.can_view_reports
 
   return (
     <Routes>
@@ -48,6 +49,7 @@ export default function App() {
             <Route path="/myday" element={<MyDay />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/prices" element={<Prices />} />
+            {canReports && <Route path="/reports" element={<Reports />} />}
           </>
         ) : (
           <>
@@ -57,7 +59,7 @@ export default function App() {
             <Route path="/stock" element={<Stock />} />
             {role === 'admin' && <Route path="/money" element={<Money />} />}
             {role === 'admin' && <Route path="/reconcile" element={<Reconcile />} />}
-            {role === 'admin' && <Route path="/reports" element={<Reports />} />}
+            {canReports && <Route path="/reports" element={<Reports />} />}
             <Route path="/prices" element={<Prices />} />
             <Route path="/approvals" element={<Approvals />} />
             {role === 'admin' && <Route path="/users" element={<Users />} />}
