@@ -69,6 +69,10 @@ export default function Dealers() {
 function Ledger({ dealer, onBack }) {
   const { auth, company } = useAuth()
   const isAdmin = auth.user.role === 'admin'
+  const [led, setLed] = useState(null)
+  const [modal, setModal] = useState(null)
+  const [visited, setVisited] = useState(dealer.visited_today)
+  const [marking, setMarking] = useState(false)
   const canCollect = isAdmin || (auth.user.role === 'manager' && auth.user.can_collect)
   const canSeed = isAdmin || (auth.user.role === 'manager' && auth.user.can_import_statement && (led ? led.entries.length === 0 : false))
   const shareStatement = async () => {
@@ -76,10 +80,6 @@ function Ledger({ dealer, onBack }) {
     const res = await shareImage(blob, (led.dealer || 'statement') + '.png', led.dealer + ' — outstanding ' + inr(led.outstanding))
     if (res === 'downloaded') toast.info('Image saved — attach it in WhatsApp')
   }
-  const [led, setLed] = useState(null)
-  const [modal, setModal] = useState(null)
-  const [visited, setVisited] = useState(dealer.visited_today)
-  const [marking, setMarking] = useState(false)
   const load = () => api.dealerLedger(dealer.id).then(setLed)
   useEffect(() => { load() }, [dealer.id])
   if (!led) return <Spin />

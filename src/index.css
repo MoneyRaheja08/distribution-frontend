@@ -78,3 +78,20 @@ button:active { transform: translateY(1px) scale(0.992); }
   background: linear-gradient(90deg, transparent, rgba(255,255,255,.65), transparent);
   animation: shimmer 1.4s infinite;
 }
+
+/* ---- Dark (collector night) theme ---- */
+html.dark { background: #0b1120; }
+html.dark body {
+  color: #e2e8f0;
+  background-color: #0b1120;
+  background-image:
+    radial-gradient(1100px 560px at 100% -12%, rgba(16,124,102,0.12), transparent 60%),
+    radial-gradient(820px 480px at -12% -6%, rgba(148,163,184,0.05), transparent 55%);
+}
+html.dark ::-webkit-scrollbar-thumb { background: #334155; background-clip: content-box; }
+html.dark ::-webkit-scrollbar-thumb:hover { background: #475569; background-clip: content-box; }
+html.dark ::selection { background: rgba(52,211,153,0.25); }
+html.dark .skeleton-shine::after {
+  background: linear-gradient(90deg, transparent, rgba(148,163,184,.14), transparent);
+}
+

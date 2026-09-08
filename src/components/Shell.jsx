@@ -1,8 +1,9 @@
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { LogOut, LayoutDashboard, Store, Package, Tag, Wallet, ClipboardList, BarChart3, ClipboardCheck, FileBarChart, Users, ShoppingCart } from 'lucide-react'
+import { LogOut, LayoutDashboard, Store, Package, Tag, Wallet, ClipboardList, BarChart3, ClipboardCheck, FileBarChart, Users, ShoppingCart, Moon, Sun } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
+import { isDark, toggleTheme } from '../lib/theme.js'
 import SyncStatus from './SyncStatus.jsx'
 
 const ICONS = {
@@ -20,12 +21,15 @@ export default function Shell() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [pull, setPull] = useState(0)
+  const [dark, setDark] = useState(isDark())
   const startY = useRef(0); const pulling = useRef(false)
   const doRefresh = () => { setRefreshing(true); setRefreshKey((k) => k + 1); setTimeout(() => setRefreshing(false), 700) }
   const onTS = (e) => { const el = e.currentTarget; if (el.scrollTop <= 0) { startY.current = e.touches[0].clientY; pulling.current = true } }
   const onTM = (e) => { if (!pulling.current) return; const dy = e.touches[0].clientY - startY.current; if (dy > 0) setPull(Math.min(dy * 0.5, 80)) }
   const onTE = () => { if (!pulling.current) return; pulling.current = false; if (pull >= 60) doRefresh(); setPull(0) }
+  const onToggleTheme = () => setDark(toggleTheme())
   const role = auth.user.role
+  const showTheme = role === 'collector'
   let tabs = [...(role === 'collector' ? NAV.collector : NAV.staff)]
   if (role === 'manager') tabs = tabs.filter(([to]) => to !== '/money')  // reconciliation is admin-only
   tabs.splice(tabs.length - 1, 0, ['/prices', 'Prices', Tag])
@@ -69,6 +73,11 @@ export default function Shell() {
               <div className="text-sm font-semibold">{auth.user.name}</div>
               <div className="text-[11px] text-brand-300/80 font-semibold uppercase tracking-wide">{subtitle}</div>
             </div>
+            {showTheme && (
+              <button onClick={onToggleTheme} data-testid="theme-toggle" className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-white/[0.06] hover:text-white transition-colors">
+                {dark ? <Sun size={16} /> : <Moon size={16} />}{dark ? 'Light mode' : 'Night mode'}
+              </button>
+            )}
             <button onClick={onLogout} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-white/[0.06] hover:text-white transition-colors">
               <LogOut size={16} />Log out
             </button>
@@ -86,7 +95,10 @@ export default function Shell() {
               <div className="text-[11px] text-slate-400">{subtitle} · {company?.name}<button onClick={() => selectCompany(null)} className="text-brand-300 ml-2">switch</button></div>
             </div>
           </div>
-          <button onClick={onLogout} className="relative rounded-lg p-1.5 text-slate-300 active:bg-white/10"><LogOut size={19} /></button>
+          <div className="relative flex items-center gap-1">
+            {showTheme && <button onClick={onToggleTheme} data-testid="theme-toggle-mobile" className="rounded-lg p-1.5 text-slate-300 active:bg-white/10">{dark ? <Sun size={18} /> : <Moon size={18} />}</button>}
+            <button onClick={onLogout} className="rounded-lg p-1.5 text-slate-300 active:bg-white/10"><LogOut size={19} /></button>
+          </div>
         </div>
 
         {/* Content */}
@@ -108,13 +120,13 @@ export default function Shell() {
         </div>
 
         {/* Mobile bottom nav */}
-        <div className={'fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-md border-t border-slate-200/80 bg-white/90 backdrop-blur-xl pt-1.5 shadow-[0_-8px_24px_-16px_rgba(15,23,42,.3)] lg:hidden ' + (tabs.length > 5 ? 'overflow-x-auto' : '')}
+        <div className={'fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-md border-t border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl pt-1.5 shadow-[0_-8px_24px_-16px_rgba(15,23,42,.3)] lg:hidden ' + (tabs.length > 5 ? 'overflow-x-auto' : '')}
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.375rem)' }}>
           {tabs.map(([to, label, Icon]) => (
             <NavLink key={to} to={to} end
               className={({ isActive }) =>
                 (tabs.length > 5 ? 'min-w-[4.6rem] shrink-0 ' : 'flex-1 ') +
-                'relative flex flex-col items-center gap-0.5 py-1 text-[10.5px] font-semibold transition-colors ' + (isActive ? 'text-brand-700' : 'text-slate-400')}>
+                'relative flex flex-col items-center gap-0.5 py-1 text-[10.5px] font-semibold transition-colors ' + (isActive ? 'text-brand-700 dark:text-brand-400' : 'text-slate-400 dark:text-slate-500')}>
               {({ isActive }) => (
                 <>
                   <span className={'absolute -top-1.5 h-1 w-8 rounded-full bg-brand-600 transition-all duration-300 ' + (isActive ? 'opacity-100 scale-100' : 'opacity-0 scale-50')} />

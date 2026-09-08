@@ -37,15 +37,15 @@ export default function Collect() {
     const needsApproval = receipt.approved === false
     return (
       <>
-        <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-6 text-center shadow-soft animate-scale-in">
-          <div className={'w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3 ' + (needsApproval ? 'bg-amber-50 text-amber-700 ring-4 ring-amber-100' : 'bg-brand-50 text-brand-700 ring-4 ring-brand-100')}><Check size={28} /></div>
-          <div className={'font-display text-3xl font-bold ' + (needsApproval ? 'text-amber-700' : 'text-brand-700')}>{inr(receipt.amount)}</div>
-          <div className="text-xs text-slate-500 mt-1">{needsApproval ? 'Sent for approval' : 'Receipt R-' + receipt.receipt + (receipt.status === 'pending' ? ' · cheque pending clearance' : '')}</div>
-          <div className="text-[12.5px] text-slate-500 mt-4 text-left border-t border-slate-100 pt-3 space-y-1">
-            <div className="flex justify-between"><span>Dealer</span><span className="font-semibold text-slate-800">{d.name}</span></div>
-            <div className="flex justify-between"><span>Mode</span><span className="font-semibold text-slate-800">{receipt.mode}{receipt.cheque ? ' · ' + receipt.cheque : ''}</span></div>
-            {!needsApproval && <div className="flex justify-between"><span>New outstanding</span><span className="font-semibold text-slate-800">{inr(receipt.new_outstanding)}</span></div>}
-            {needsApproval && <div className="flex justify-between"><span>Status</span><span className="font-semibold text-amber-700">Awaiting manager/admin approval</span></div>}
+        <div className="bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-6 text-center shadow-soft animate-scale-in">
+          <div className={'w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3 ' + (needsApproval ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-4 ring-amber-100 dark:ring-amber-500/20' : 'bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300 ring-4 ring-brand-100 dark:ring-brand-500/20')}><Check size={28} /></div>
+          <div className={'font-display text-3xl font-bold ' + (needsApproval ? 'text-amber-700 dark:text-amber-300' : 'text-brand-700 dark:text-brand-400')}>{inr(receipt.amount)}</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{needsApproval ? 'Sent for approval' : 'Receipt R-' + receipt.receipt + (receipt.status === 'pending' ? ' · cheque pending clearance' : '')}</div>
+          <div className="text-[12.5px] text-slate-500 dark:text-slate-400 mt-4 text-left border-t border-slate-100 dark:border-slate-800 pt-3 space-y-1">
+            <div className="flex justify-between"><span>Dealer</span><span className="font-semibold text-slate-800 dark:text-slate-200">{d.name}</span></div>
+            <div className="flex justify-between"><span>Mode</span><span className="font-semibold text-slate-800 dark:text-slate-200">{receipt.mode}{receipt.cheque ? ' · ' + receipt.cheque : ''}</span></div>
+            {!needsApproval && <div className="flex justify-between"><span>New outstanding</span><span className="font-semibold text-slate-800 dark:text-slate-200">{inr(receipt.new_outstanding)}</span></div>}
+            {needsApproval && <div className="flex justify-between"><span>Status</span><span className="font-semibold text-amber-700 dark:text-amber-300">Awaiting manager/admin approval</span></div>}
           </div>
         </div>
         <button onClick={() => nav('/')} className="w-full mt-4 bg-gradient-to-b from-brand-500 to-brand-700 hover:from-brand-400 hover:to-brand-600 text-white font-semibold py-3.5 rounded-xl shadow-glow transition-all">Done</button>
@@ -56,22 +56,22 @@ export default function Collect() {
   return (
     <>
       <BackBtn label="Cancel" />
-      <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 mb-2.5">Record collection — {d.name}</div>
-      <div className="bg-white border border-slate-200/70 rounded-2xl p-4 space-y-4 shadow-soft">
+      <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400 mb-2.5">Record collection — {d.name}</div>
+      <div className="bg-white dark:bg-slate-900/70 border border-slate-200/70 dark:border-slate-800 rounded-2xl p-4 space-y-4 shadow-soft">
         <Field label="Amount received" value={amt} onChange={setAmt} type="number" placeholder="₹" big />
         <div>
-          <div className="text-xs font-semibold text-slate-600 mb-1.5">Mode</div>
+          <div className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Mode</div>
           <div className="flex gap-2">
             {['Cash', 'Cheque', 'UPI'].map((m) => (
               <button key={m} onClick={() => setMode(m)}
                 className={'flex-1 py-2.5 rounded-xl text-[13px] font-semibold border transition-all ' +
-                  (mode === m ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-soft' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300')}>{m}</button>
+                  (mode === m ? 'border-brand-600 bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300 shadow-soft' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300')}>{m}</button>
             ))}
           </div>
         </div>
         {mode === 'Cheque' && <Field label="Cheque no. & bank" value={cheque} onChange={setCheque} placeholder="004521 · PNB" />}
-        <div className="text-[11px] text-slate-500">Applied to oldest dues first. Cheques stay pending until cleared.</div>
-        {err && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 animate-fade-in">{err}</div>}
+        <div className="text-[11px] text-slate-500 dark:text-slate-400">Applied to oldest dues first. Cheques stay pending until cleared.</div>
+        {err && <div className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl px-3 py-2 animate-fade-in">{err}</div>}
         <button onClick={save} disabled={busy}
           className="w-full bg-gradient-to-b from-brand-500 to-brand-700 hover:from-brand-400 hover:to-brand-600 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 shadow-glow disabled:opacity-60 transition-all">
           {busy && <Loader2 size={16} className="animate-spin" />} Save &amp; generate receipt

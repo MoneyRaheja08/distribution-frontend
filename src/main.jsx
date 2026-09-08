@@ -5,7 +5,10 @@ import App from './App.jsx'
 import { AuthProvider } from './auth/AuthContext.jsx'
 import Toaster from './components/Toaster.jsx'
 import ConfirmHost from './components/ConfirmHost.jsx'
+import { initTheme } from './lib/theme.js'
 import './index.css'
+
+initTheme()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
