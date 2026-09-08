@@ -157,6 +157,10 @@ export const reportActivity = () => wait({ rows: [] })
 export const reportSalesVsColl = () => wait({ rows: [], total_sales: 0, total_collected: 0 })
 
 export const reportBillAgeing = () => wait({ dealers: [] })
+export const reportBills = (from, to, source) => wait({ from, to, source, total: 250628, rows: [
+  { dealer: 'KHANNA ENTERPRISES', bill_no: 'H00001', date: from, amount: 125628, source: 'pdf' },
+  { dealer: 'Sharma Electronics', bill_no: 'H00042', date: to, amount: 125000, source: 'pdf' },
+] })
 
 export const backup = () => wait({ dealers: [], bills: [], payments: [] })
 

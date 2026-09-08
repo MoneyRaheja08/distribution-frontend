@@ -25,7 +25,7 @@ export default function Reports() {
       <div className="text-xs font-bold text-slate-600 mb-2.5 px-0.5">Reports</div>
 
       <div className="flex gap-1.5 mb-3 overflow-x-auto">
-        {[['collections', 'Collections'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']].map(([k, l]) => (
+        {[['collections', 'Collections'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['billspdf', 'PDF bills'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']].map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
             className={'whitespace-nowrap text-[13px] font-semibold px-3.5 py-2 rounded-lg border ' +
               (tab === k ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500')}>{l}</button>
@@ -45,6 +45,7 @@ export default function Reports() {
       {tab === 'ageing' && <Ageing />}
       {tab === 'activity' && <Activity from={from} to={to} />}
       {tab === 'billage' && <BillAgeing />}
+      {tab === 'billspdf' && <PdfBills from={from} to={to} />}
       {tab === 'svc' && <SalesVsColl from={from} to={to} />}
     </>
   )
@@ -204,6 +205,30 @@ function Activity({ from, to }) {
           <div key={x.name} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
             <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800">{x.name}</span><span className="font-bold text-emerald-700">{inr(x.collected)}</span></div>
             <div className="text-[11px] text-slate-500 mt-0.5">{x.receipts} receipts · {x.visits} visits · {x.dealers_visited} dealers</div>
+          </div>
+        ))}
+      </Section>
+    </>
+  )
+}
+
+function PdfBills({ from, to }) {
+  const [r, setR] = useState(null)
+  const [q, setQ] = useState('')
+  useEffect(() => { setR(null); setQ(''); api.reportBills(from, to, 'pdf').then(setR) }, [from, to])
+  if (!r) return <SkeletonList rows={5} />
+  const rows = (r.rows || []).filter((x) => !q || (x.dealer || '').toLowerCase().includes(q.toLowerCase()) || (x.bill_no || '').toLowerCase().includes(q.toLowerCase()))
+  const total = rows.reduce((s, x) => s + x.amount, 0)
+  return (
+    <>
+      <Big label={`Bills added from PDF · ${from} to ${to}`} value={inr(total)} />
+      <FilterBar><Search value={q} onChange={setQ} placeholder="Search dealer or bill no…" /></FilterBar>
+      <Section title={`${rows.length} bill${rows.length === 1 ? '' : 's'}`}
+        action={<ExportBtn onClick={() => exportSheet('pdf-bills.xlsx', [['Date', 'Bill No', 'Dealer', 'Amount'], ...rows.map((x) => [x.date, x.bill_no, x.dealer, x.amount])], { money: [3], sheet: 'PDF bills' })} />}>
+        {rows.length === 0 ? <Row2 a="No PDF-imported bills in this range" b="" /> : rows.map((x, i) => (
+          <div key={i} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
+            <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{x.dealer}</span><span className="font-bold text-slate-900 shrink-0">{inr(x.amount)}</span></div>
+            <div className="text-[11px] text-slate-500 mt-0.5">Bill {x.bill_no} · {x.date}</div>
           </div>
         ))}
       </Section>

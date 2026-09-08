@@ -20,15 +20,15 @@ function Stat({ label, value, tone = 'text-slate-900', icon: Icon }) {
 export default function Money() {
   const [s, setS] = useState(null)
   const [pays, setPays] = useState(null)
-  const [today, setToday] = useState(null)
+  const [received, setReceived] = useState(null)
   const todayIso = new Date().toLocaleDateString('en-CA')  // YYYY-MM-DD (local)
-  const reload = () => {
-    api.summary().then(setS)
-    api.payments().then(setPays)
-    api.payments('?day=' + todayIso).then(setToday)
-  }
-  useEffect(() => { reload() }, [])   // eslint-disable-line react-hooks/exhaustive-deps
-  if (!pays || !s || !today) return <Spin />
+  const [day, setDay] = useState(todayIso)
+
+  const loadCore = () => { api.summary().then(setS); api.payments().then(setPays) }
+  const loadDay = (d) => { setReceived(null); api.payments('?day=' + d).then((list) => setReceived(list.filter((p) => p.status !== 'bounced'))) }
+  useEffect(() => { loadCore() }, [])   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadDay(day) }, [day])   // eslint-disable-line react-hooks/exhaustive-deps
+  if (!pays || !s) return <Spin />
 
   const cashByCollector = {}
   pays.filter((p) => p.mode === 'Cash' && !p.deposited && p.status === 'cleared').forEach((p) => {
@@ -37,14 +37,19 @@ export default function Money() {
   })
   const cashRows = Object.values(cashByCollector)
   const cheques = pays.filter((p) => p.status === 'pending')
-  const received = [...today].filter((p) => p.status !== 'bounced')
-  const receivedTotal = received.reduce((sum, p) => sum + p.amount, 0)
 
-  const deposit = async (cid) => { await api.deposit(cid); reload(); toast.success('Marked deposited') }
-  const chq = async (id, ok) => { await api.cheque(id, ok); reload(); toast.success(ok ? 'Cheque cleared' : 'Cheque bounced') }
+  const rec = received || []
+  const receivedTotal = rec.reduce((sum, p) => sum + p.amount, 0)
+  const reconcilable = rec.filter((p) => p.status !== 'pending')
+  const doneCount = reconcilable.filter((p) => p.reconciled).length
+  const pct = reconcilable.length ? Math.round((doneCount / reconcilable.length) * 100) : 0
+  const isToday = day === todayIso
+
+  const deposit = async (cid) => { await api.deposit(cid); loadCore(); loadDay(day); toast.success('Marked deposited') }
+  const chq = async (id, ok) => { await api.cheque(id, ok); loadCore(); loadDay(day); toast.success(ok ? 'Cheque cleared' : 'Cheque bounced') }
   const reconcile = async (id) => {
     await api.reconcilePayment(id, true)
-    setToday((list) => list.map((p) => (p.id === id ? { ...p, reconciled: true } : p)))
+    setReceived((list) => list.map((p) => (p.id === id ? { ...p, reconciled: true } : p)))
     toast.success('Reconciled')
   }
 
@@ -62,17 +67,29 @@ export default function Money() {
         <Stat label="Total outstanding" value={inr(s.total_outstanding)} icon={ClipboardCheck} />
       </div>
 
-      {/* Received today — reconcile inline */}
-      <div className="flex items-center justify-between mb-2.5 px-0.5">
-        <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">Received today · reconcile</div>
-        <div className="text-[12px] font-semibold text-slate-500">{received.length} · <span className="text-brand-700">{inr(receivedTotal)}</span></div>
+      {/* Received on a day — reconcile inline */}
+      <div className="flex items-center justify-between mb-2.5 px-0.5 gap-2">
+        <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">Payments received {isToday ? 'today' : 'on'}</div>
+        <input type="date" value={day} max={todayIso} data-testid="money-day-picker" onChange={(e) => setDay(e.target.value || todayIso)}
+          className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold text-slate-600 bg-white outline-none focus:border-brand-500" />
       </div>
-      <div className="mb-6">
-        {received.length === 0 ? (
-          <EmptyState icon={Wallet} title="No payments received today yet" hint="As collectors record collections through the day, they land here for you to check off and reconcile." />
-        ) : (
-          <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
-            {received.map((p) => (
+
+      {received === null ? <Spin /> : rec.length === 0 ? (
+        <EmptyState icon={Wallet} title={isToday ? 'No payments received today yet' : 'No payments on this day'} hint="As collectors record collections, they land here for you to check off and reconcile." />
+      ) : (
+        <>
+          <div className="bg-white border border-slate-200/70 rounded-2xl p-3.5 mb-3 shadow-soft">
+            <div className="flex justify-between items-center text-[12px] mb-2">
+              <span className="font-semibold text-slate-600">{rec.length} received · <span className="text-brand-700">{inr(receivedTotal)}</span></span>
+              <span data-testid="reconcile-progress" className="font-semibold text-slate-500">{doneCount} of {reconcilable.length} reconciled</span>
+            </div>
+            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+              <div className={'h-full transition-all ' + (pct === 100 ? 'bg-brand-600' : 'bg-brand-500')} style={{ width: pct + '%' }} />
+            </div>
+            {reconcilable.length > 0 && pct === 100 && <div className="text-[11px] font-semibold text-brand-700 mt-1.5">All squared off for the day ✓</div>}
+          </div>
+          <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0 mb-6">
+            {rec.map((p) => (
               <div key={p.id} data-testid={'received-payment-' + p.id} className="bg-white border border-slate-200/70 rounded-2xl p-3.5 shadow-soft">
                 <div className="flex justify-between items-start gap-3">
                   <div className="min-w-0">
@@ -96,8 +113,8 @@ export default function Money() {
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {/* Cash in hand */}
       <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 mb-2.5 px-0.5">Cash in hand · mark when deposited</div>

@@ -302,7 +302,7 @@ function PdfModal({ dealers, onClose, onDone }) {
     if (!dealerId) return toast.error('Pick the dealer this bill belongs to')
     setBusy(true)
     try {
-      await api.addBill(dealerId, { bill_no: parsed.bill_no, date: parsed.date || new Date().toISOString().slice(0, 10), amount: parsed.amount })
+      await api.addBill(dealerId, { bill_no: parsed.bill_no, date: parsed.date || new Date().toISOString().slice(0, 10), amount: parsed.amount, source: 'pdf' })
       toast.success('Bill added'); onDone()
     } catch (err) { toast.error(err.message); setBusy(false) }
   }
