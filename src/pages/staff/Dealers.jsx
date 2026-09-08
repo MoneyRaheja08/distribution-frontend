@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Loader2, Upload, FileText, Download } from 'lucide-react'
+import { Loader2, Upload, FileText, Download, Search, ChevronRight, Store } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { toast } from '../../lib/toast.js'
 import { confirmDialog } from '../../lib/confirm.js'
 import { inr } from '../../lib/format.js'
 import { parseStatement, parseBulkBills, downloadBillsTemplate } from '../../lib/statement.js'
-import { Spin, SectionH, RowActions, Pill, Modal, Field, Select, SkeletonList } from '../../components/ui.jsx'
+import { Spin, SectionH, RowActions, Pill, Modal, Field, Select, SkeletonList, Card, EmptyState } from '../../components/ui.jsx'
 import { LedgerHeader, LedgerTable } from '../../components/Ledger.jsx'
 import { useAuth } from '../../auth/AuthContext.jsx'
 import { waLink, reminderText } from '../../lib/whatsapp.js'
@@ -33,32 +33,45 @@ export default function Dealers() {
   return (
     <>
       <SectionH onAdd={() => setEditing({})}>Dealers</SectionH>
-      <div className="flex gap-2 mb-3">
-        <button onClick={() => setModal('pdf')} className="flex-1 text-[12px] font-semibold text-slate-600 border border-slate-200 rounded-lg py-2 flex items-center justify-center gap-1"><FileText size={13} />Bill from PDF</button>
-        {isAdmin && <button onClick={() => setModal('bulk')} className="flex-1 text-[12px] font-semibold text-slate-600 border border-slate-200 rounded-lg py-2 flex items-center justify-center gap-1"><Upload size={13} />Bulk bills</button>}
+      <div className="grid grid-cols-2 gap-3 mb-4 stagger">
+        <Card n={inr(data.reduce((s, d) => s + d.outstanding, 0))} l="Total outstanding" />
+        <Card n={data.length} l="Dealers" />
       </div>
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search dealer…"
-        className="w-full mb-3 border border-slate-200 rounded-lg px-3 py-2.5 bg-white text-base outline-none focus:border-emerald-500" />
+      <div className="flex gap-2 mb-3">
+        <button onClick={() => setModal('pdf')} className="flex-1 text-[12px] font-semibold text-slate-600 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-xl py-2.5 flex items-center justify-center gap-1.5 shadow-soft transition-colors"><FileText size={14} />Bill from PDF</button>
+        {isAdmin && <button onClick={() => setModal('bulk')} className="flex-1 text-[12px] font-semibold text-slate-600 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-xl py-2.5 flex items-center justify-center gap-1.5 shadow-soft transition-colors"><Upload size={14} />Bulk bills</button>}
+      </div>
+      <div className="relative mb-3">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search dealer or area…"
+          className="w-full border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 bg-white text-base outline-none transition-colors focus:border-brand-500" />
+      </div>
+      {data.length === 0 ? (
+        <EmptyState icon={Store} title="No dealers yet" hint="Add your first dealer, or import a MARG statement to build their full ledger in one go." />
+      ) : (
       <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
-        {data.length === 0 && <div className="text-center text-slate-400 text-sm py-10 bg-white border border-dashed border-slate-200 rounded-xl">No dealers yet. Tap Add, or import a statement.</div>}
         {data.filter((d) => !q || d.name.toLowerCase().includes(q.toLowerCase()) || (d.area || '').toLowerCase().includes(q.toLowerCase())).map((d) => {
           const over = d.outstanding > d.credit_limit && d.credit_limit > 0
           return (
-            <div key={d.id} className="bg-white border border-slate-200 rounded-xl p-3.5">
+            <div key={d.id} className="group bg-white border border-slate-200/70 rounded-2xl p-3.5 shadow-soft hover:shadow-lift hover:-translate-y-0.5 transition-all">
               <button onClick={() => setLedgerOf(d)} className="w-full flex justify-between items-center text-left">
-                <div>
-                  <div className="text-[15px] font-semibold">{d.name}</div>
+                <div className="min-w-0 pr-2">
+                  <div className="text-[15px] font-semibold text-slate-900 truncate">{d.name}</div>
                   <div className="text-[11px] text-slate-500 mt-0.5">{d.area || '—'}</div>
                   {over && <Pill tone="over">Over limit</Pill>}
                   {d.ageing?.age_90p > 0 && <Pill tone="old">90+ dues</Pill>}
                 </div>
-                <div className="text-[16px] font-bold tracking-tight">{inr(d.outstanding)}</div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <div className={'font-display text-[16px] font-bold tracking-tight ' + (d.outstanding === 0 ? 'text-brand-700' : 'text-slate-900')}>{inr(d.outstanding)}</div>
+                  <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-400 group-hover:translate-x-0.5 transition-all" />
+                </div>
               </button>
               <RowActions onEdit={() => setEditing(d)} onDel={isAdmin ? () => del(d.id) : null} />
             </div>
           )
         })}
       </div>
+      )}
       {editing && <DealerForm dealer={editing} collectors={collectors} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload() }} />}
       {modal === 'bulk' && <BulkModal onClose={() => setModal(null)} onDone={() => { setModal(null); reload() }} />}
       {modal === 'pdf' && <PdfModal dealers={data} onClose={() => setModal(null)} onDone={() => { setModal(null); reload() }} />}
@@ -94,9 +107,9 @@ function Ledger({ dealer, onBack }) {
       </div>
       <LedgerHeader name={led.dealer} outstanding={led.outstanding} ageing={led.ageing} creditLimit={led.credit_limit} lastPayment={led.last_payment} />
       <div className="flex flex-wrap gap-2 mb-3">
-        <button onClick={() => setModal('bill')} className="flex-1 min-w-[30%] bg-emerald-700 text-white text-[13px] font-semibold py-2.5 rounded-lg">Add bill</button>
-        {canCollect && led.outstanding > 0 && <button onClick={() => setModal('collect')} className="flex-1 min-w-[30%] bg-slate-900 text-white text-[13px] font-semibold py-2.5 rounded-lg">Record payment</button>}
-        {canSeed && <button onClick={() => setModal('statement')} className="flex-1 min-w-[30%] border border-slate-200 text-slate-600 text-[13px] font-semibold py-2.5 rounded-lg">Import statement</button>}
+        <button onClick={() => setModal('bill')} className="flex-1 min-w-[30%] bg-gradient-to-b from-brand-500 to-brand-700 hover:from-brand-400 hover:to-brand-600 text-white text-[13px] font-semibold py-2.5 rounded-xl shadow-glow transition-all">Add bill</button>
+        {canCollect && led.outstanding > 0 && <button onClick={() => setModal('collect')} className="flex-1 min-w-[30%] bg-slate-900 hover:bg-slate-800 text-white text-[13px] font-semibold py-2.5 rounded-xl transition-colors">Record payment</button>}
+        {canSeed && <button onClick={() => setModal('statement')} className="flex-1 min-w-[30%] border border-slate-200 hover:bg-slate-50 text-slate-600 text-[13px] font-semibold py-2.5 rounded-xl transition-colors">Import statement</button>}
         {led.outstanding > 0 && dealer.phone && <a href={waLink(dealer.phone, reminderText(led.dealer, led.outstanding, led.ageing))} target="_blank" rel="noreferrer" className="flex-1 min-w-[30%] text-center bg-[#25D366] text-white text-[13px] font-semibold py-2.5 rounded-lg">WhatsApp reminder</a>}
         <button onClick={shareStatement} className="flex-1 min-w-[30%] bg-[#075E54] text-white text-[13px] font-semibold py-2.5 rounded-lg">Share statement</button>
       </div>
