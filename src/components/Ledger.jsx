@@ -14,7 +14,7 @@ function fmtDay(d) {
   return `${day} ${MONTHS[(+m || 1) - 1]}`
 }
 
-const AGE = [['age_0_30', '0–30', '#0E7C66'], ['age_31_60', '31–60', '#5B8A72'],
+const AGE = [['age_0_30', '0–30', '#12a184'], ['age_31_60', '31–60', '#5B8A72'],
   ['age_61_90', '61–90', '#B4884A'], ['age_90p', '90+', '#B23A32']]
 
 // Header card: outstanding, credit-limit usage, ageing bar, last payment.
@@ -23,17 +23,17 @@ export function LedgerHeader({ name, outstanding, ageing = {}, creditLimit = 0, 
   const over = creditLimit > 0 && outstanding > creditLimit
   const pct = creditLimit > 0 ? Math.min(100, (outstanding / creditLimit) * 100) : 0
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-4 mb-3">
-      {name && <div className="text-lg font-bold leading-tight">{name}</div>}
+    <div className="bg-white border border-slate-200/70 rounded-2xl p-4 mb-3 shadow-soft">
+      {name && <div className="font-display text-lg font-bold leading-tight">{name}</div>}
       <div className="flex items-baseline gap-2 mt-1">
-        <div className="text-[26px] font-extrabold tracking-tight">{inr(outstanding)}</div>
+        <div className="font-display text-[26px] font-bold tracking-tight">{inr(outstanding)}</div>
         <div className="text-[11px] text-slate-500">outstanding</div>
       </div>
 
       {creditLimit > 0 && (
         <>
           <div className="h-1.5 rounded-full bg-slate-200 overflow-hidden mt-2">
-            <div className={'h-full ' + (over ? 'bg-red-600' : 'bg-emerald-600')} style={{ width: pct + '%' }} />
+            <div className={'h-full transition-all ' + (over ? 'bg-red-600' : 'bg-brand-600')} style={{ width: pct + '%' }} />
           </div>
           <div className="text-[11px] text-slate-500 mt-1">
             of {inr(creditLimit)} limit{over && <span className="text-red-700 font-semibold"> · over limit</span>}
@@ -58,7 +58,7 @@ export function LedgerHeader({ name, outstanding, ageing = {}, creditLimit = 0, 
 
       {lastPayment && (
         <div className="text-[12px] text-slate-500 mt-3 pt-2 border-t border-slate-100">
-          Last payment <b className="text-emerald-700">{inr(lastPayment.amount)}</b> · {fmtDay(lastPayment.date)} {lastPayment.date?.slice(0, 4)}
+          Last payment <b className="text-brand-700">{inr(lastPayment.amount)}</b> · {fmtDay(lastPayment.date)} {lastPayment.date?.slice(0, 4)}
         </div>
       )}
     </div>
@@ -68,11 +68,11 @@ export function LedgerHeader({ name, outstanding, ageing = {}, creditLimit = 0, 
 // Traditional khata: oldest at top, balance builds down, grouped by month.
 export function LedgerTable({ entries = [], onDelete }) {
   if (!entries.length) {
-    return <div className="bg-white border border-slate-200 rounded-xl p-4 text-[12px] text-slate-400">No entries yet.</div>
+    return <div className="bg-white border border-slate-200/70 rounded-2xl p-4 text-[12px] text-slate-400 shadow-soft">No entries yet.</div>
   }
   let lastMonth = null
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+    <div className="bg-white border border-slate-200/70 rounded-2xl overflow-hidden shadow-soft">
       <div className="flex items-center px-3 py-2 bg-slate-50 border-b border-slate-200 text-[10.5px] font-bold text-slate-500 uppercase tracking-wide">
         <div className="flex-1">Particulars</div>
         <div className="w-20 text-right">Debit</div>
@@ -87,7 +87,7 @@ export function LedgerTable({ entries = [], onDelete }) {
         return (
           <div key={i}>
             {showMonth && <div className="px-3 py-1 bg-slate-50/70 text-[10.5px] font-semibold text-slate-400 border-b border-slate-100">{m}</div>}
-            <div className="flex items-center px-3 py-2.5 border-b border-slate-50 last:border-0 text-[13px]">
+            <div className="flex items-center px-3 py-2.5 border-b border-slate-50 last:border-0 text-[13px] hover:bg-slate-50/60 transition-colors">
               <div className="flex-1 min-w-0 pr-2">
                 <div className="font-semibold text-slate-800 truncate">
                   {isBill ? (e.ref === 'Opening' ? 'Opening balance' : 'Bill ' + e.ref) : (e.mode || 'Payment') + (e.ref && e.ref !== e.mode ? ' ' + e.ref : '')}
@@ -100,9 +100,9 @@ export function LedgerTable({ entries = [], onDelete }) {
                 </div>
               </div>
               <div className="w-20 text-right font-semibold text-slate-800">{e.debit ? inr(e.debit) : ''}</div>
-              <div className="w-20 text-right font-semibold text-emerald-700">{e.credit ? inr(e.credit) : ''}</div>
+              <div className="w-20 text-right font-semibold text-brand-700">{e.credit ? inr(e.credit) : ''}</div>
               <div className="w-24 text-right font-bold text-slate-900">{inr(e.balance)}</div>
-              {onDelete && <div className="w-7 text-right">{e.type === 'payment' && e.id ? <button onClick={() => onDelete(e)} className="text-red-400 hover:text-red-600 p-1"><Trash2 size={13} /></button> : null}</div>}
+              {onDelete && <div className="w-7 text-right">{e.type === 'payment' && e.id ? <button onClick={() => onDelete(e)} className="text-red-400 hover:text-red-600 p-1 transition-colors"><Trash2 size={13} /></button> : null}</div>}
             </div>
           </div>
         )
