@@ -140,19 +140,40 @@ export default function Dashboard() {
 }
 
 function Trend({ data }) {
-  const max = Math.max(1, ...data.map((d) => d.amount))
-  const W = 320, H = 90, n = data.length, gap = 3
-  const bw = (W - gap * (n - 1)) / n
+  const amounts = data.map((d) => d.amount)
+  const peak = Math.max(0, ...amounts)
+  const max = Math.max(1, peak)
+  const total = amounts.reduce((s, a) => s + a, 0)
+  const dm = (s) => (s || '').slice(5).replace('-', '/')
   return (
-    <svg viewBox={`0 0 ${W} ${H + 16}`} className="w-full" preserveAspectRatio="xMidYMid meet">
-      {data.map((d, i) => {
-        const h = Math.round((d.amount / max) * H)
-        const x = i * (bw + gap)
-        return <g key={i}>
-          <rect x={x} y={H - h} width={bw} height={h} rx="2" fill={d.amount > 0 ? '#0E7C66' : '#E2E8F0'} />
-          {(i === 0 || i === n - 1 || i === Math.floor(n / 2)) && <text x={x + bw / 2} y={H + 12} fontSize="8" textAnchor="middle" fill="#94A3B8">{d.date.slice(5)}</text>}
-        </g>
-      })}
-    </svg>
+    <div>
+      <div className="flex items-end justify-between mb-4">
+        <div>
+          <div className="font-display text-xl font-bold tracking-tight text-slate-900">{inr(total)}</div>
+          <div className="text-[11px] text-slate-400">collected over 14 days</div>
+        </div>
+        {peak > 0 && <div className="text-right"><div className="text-[13px] font-bold text-brand-700">{inr(peak)}</div><div className="text-[11px] text-slate-400">best day</div></div>}
+      </div>
+      <div className="flex items-end gap-[3px] h-36">
+        {data.map((d, i) => {
+          const h = d.amount > 0 ? Math.max(4, Math.round((d.amount / max) * 100)) : 0
+          return (
+            <div key={i} className="group relative flex-1 h-full flex items-end rounded-md bg-slate-100/70">
+              <div className={'w-full rounded-md transition-[height] duration-500 ease-out ' + (d.amount > 0 ? 'bg-gradient-to-t from-brand-600 to-brand-400 group-hover:from-brand-500 group-hover:to-brand-300' : '')} style={{ height: h + '%' }} />
+              {d.amount > 0 && (
+                <div className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="bg-slate-900 text-white text-[10px] font-semibold px-2 py-1 rounded-md shadow-lift">{inr(d.amount)}<div className="text-[9px] font-normal text-slate-300">{dm(d.date)}</div></div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+      <div className="flex justify-between mt-2.5 text-[10.5px] font-medium text-slate-400">
+        <span>{dm(data[0]?.date)}</span>
+        <span>{dm(data[Math.floor(data.length / 2)]?.date)}</span>
+        <span>{dm(data[data.length - 1]?.date)}</span>
+      </div>
+    </div>
   )
 }

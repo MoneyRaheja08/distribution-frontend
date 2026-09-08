@@ -84,7 +84,16 @@ export const summary = () => {
     dealers: store.dealers.filter((d) => d.collector_id === u.id).length,
     collected_today: store.payments.filter((p) => p.collector_id === u.id && p.date === 'today' && p.status !== 'bounced').reduce((s, p) => s + p.amount, 0),
   }))
-  return wait({ total_outstanding: total, over_90_days: over90, collected_today: collected, cash_undeposited: cash, cheques_pending: chq, per_collector: per })
+  const ageing = { age_0_30: 0, age_31_60: 0, age_61_90: 0, age_90p: 0 }
+  store.dealers.forEach((d) => AGE.forEach((f) => { ageing[f] += (d.ageing?.[f] || 0) }))
+  const top_overdue = store.dealers
+    .map((d) => ({ name: d.name, area: d.area, outstanding: outstanding(d),
+      oldest_due: d.ageing.age_90p > 0 ? 95 : d.ageing.age_61_90 > 0 ? 75 : d.ageing.age_31_60 > 0 ? 45 : 20 }))
+    .filter((d) => d.outstanding > 0).sort((a, b) => b.outstanding - a.outstanding).slice(0, 8)
+  const demo = [0, 0, 34000, 0, 68000, 0, 25000, 110000, 0, 52000, 90000, 0, 47000, collected]
+  const daily = []
+  for (let i = 13; i >= 0; i--) { const dt = new Date(); dt.setDate(dt.getDate() - i); daily.push({ date: dt.toLocaleDateString('en-CA'), amount: demo[13 - i] || 0 }) }
+  return wait({ total_outstanding: total, over_90_days: over90, collected_today: collected, cash_undeposited: cash, cheques_pending: chq, per_collector: per, ageing, top_overdue, daily, pending_approvals: 0 })
 }
 // remember who is logged in (mock only) so collections attribute correctly
 export const _setMe = (id, name, role) => { store._me = id; store._meName = name; store._meRole = role }
