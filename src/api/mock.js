@@ -204,9 +204,16 @@ export const reportProfit = (from, to, brand) => {
 export const agingStock = (days = 60) => wait({ days, count: 2, value: 26500, rows: [  { imei: 'CAACKL0000104S8DTBQ2', model: 'HAIER SEMI W/M- HTW80-196BR:NOIDA', brand: 'HAIER', purchase_date: '2026-03-01', days: 96, purchase_rate: 13500 },
   { imei: 'RZ8N90ABCDXYZ12345', model: 'SAMSUNG LED- UA43T5770', brand: 'SAMSUNG', purchase_date: '2026-04-02', days: 64, purchase_rate: 13000 },
 ] })
-export const reportBrandScorecard = (from, to) => wait({ from, to, rows: [
-  { brand: 'HAIER', purchase_amount: 4210000, purchase_qty: 263, sale_amount: 159533, sale_units: 11, stock_value: 238000, stock_units: 16, margin: 22551 },
+export const reportBrandScorecard = (from, to) => wait({ from, to, rows: [  { brand: 'HAIER', purchase_amount: 4210000, purchase_qty: 263, sale_amount: 159533, sale_units: 11, stock_value: 238000, stock_units: 16, margin: 22551 },
   { brand: 'SAMSUNG', purchase_amount: 1200000, purchase_qty: 40, sale_amount: 58000, sale_units: 2, stock_value: 205000, stock_units: 10, margin: 8000 },
+] })
+export const reportTopPerformers = (from, to) => wait({ from, to, top_skus: [
+  { model: 'HAIER LED- 32" LE32A7-N:HIL', brand: 'HAIER', qty: 5, amount: 71045 },
+  { model: 'SAMSUNG LED- UA43T5770', brand: 'SAMSUNG', qty: 2, amount: 58000 },
+  { model: 'HAIER M/W- HIL2801DBSJ:MWO', brand: 'HAIER', qty: 3, amount: 33906 },
+], top_dealers: [
+  { dealer: 'KHANNA ENTERPRISES', qty: 8, amount: 125628 },
+  { dealer: 'ANAND SALES MOHALI', qty: 3, amount: 33905 },
 ] })
 export const stockSummary = () => wait({ brands: ['HAIER', 'SAMSUNG'], rows: [
   { model: 'HAIER SEMI W/M- HTW80-196BR:NOIDA', brand: 'HAIER', group: 'HAIER W/M SEMI', total: 12, available: 9, tracked: 'imei' },

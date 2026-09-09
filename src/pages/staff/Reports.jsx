@@ -25,7 +25,7 @@ export default function Reports() {
       <div className="text-xs font-bold text-slate-600 mb-2.5 px-0.5">Reports</div>
 
       <div className="flex gap-1.5 mb-3 overflow-x-auto">
-        {[['collections', 'Collections'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['billspdf', 'PDF bills'], ['sales', 'Dealer × Model'], ['purchases', 'Brand buys'], ['profit', 'Profit'], ['scorecard', 'Scorecard'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']].map(([k, l]) => (
+        {[['collections', 'Collections'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['billspdf', 'PDF bills'], ['sales', 'Dealer × Model'], ['purchases', 'Brand buys'], ['profit', 'Profit'], ['scorecard', 'Scorecard'], ['top', 'Top performers'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']].map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
             className={'whitespace-nowrap text-[13px] font-semibold px-3.5 py-2 rounded-lg border ' +
               (tab === k ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500')}>{l}</button>
@@ -50,6 +50,7 @@ export default function Reports() {
       {tab === 'purchases' && <PurchaseBrandReport from={from} to={to} />}
       {tab === 'profit' && <ProfitReport from={from} to={to} />}
       {tab === 'scorecard' && <BrandScorecard from={from} to={to} />}
+      {tab === 'top' && <TopPerformers from={from} to={to} />}
       {tab === 'svc' && <SalesVsColl from={from} to={to} />}
     </>
   )
@@ -211,6 +212,30 @@ function Activity({ from, to }) {
             <div className="text-[11px] text-slate-500 mt-0.5">{x.receipts} receipts · {x.visits} visits · {x.dealers_visited} dealers</div>
           </div>
         ))}
+      </Section>
+    </>
+  )
+}
+
+function TopPerformers({ from, to }) {
+  const [r, setR] = useState(null)
+  useEffect(() => { setR(null); api.reportTopPerformers(from, to).then(setR) }, [from, to])
+  if (!r) return <SkeletonList rows={5} />
+  const Rank = ({ i, a, sub, amt }) => (
+    <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-slate-50 last:border-0 text-[13px]">
+      <span className="w-5 text-center font-display font-bold text-slate-300">{i + 1}</span>
+      <div className="flex-1 min-w-0"><div className="font-semibold text-slate-800 truncate">{a}</div>{sub && <div className="text-[10px] text-slate-400">{sub}</div>}</div>
+      <span className="font-bold text-slate-900 shrink-0">{inr(amt)}</span>
+    </div>
+  )
+  return (
+    <>
+      <div className="text-[12px] text-slate-500 mb-3 px-0.5">Best performers · {from} → {to}</div>
+      <Section title="Top SKUs" action={<ExportBtn onClick={() => exportSheet('top-skus.xlsx', [['Model', 'Brand', 'Qty', 'Amount'], ...r.top_skus.map((x) => [x.model, x.brand, x.qty, x.amount])], { money: [3], sheet: 'SKUs' })} />}>
+        {r.top_skus.length === 0 ? <Row2 a="No sales in range" b="" /> : r.top_skus.map((x, i) => <Rank key={i} i={i} a={x.model} sub={`${x.brand} · ${x.qty} sold`} amt={x.amount} />)}
+      </Section>
+      <Section title="Top dealers" action={<ExportBtn onClick={() => exportSheet('top-dealers.xlsx', [['Dealer', 'Qty', 'Amount'], ...r.top_dealers.map((x) => [x.dealer, x.qty, x.amount])], { money: [2], sheet: 'Dealers' })} />}>
+        {r.top_dealers.length === 0 ? <Row2 a="—" b="" /> : r.top_dealers.map((x, i) => <Rank key={i} i={i} a={x.dealer} sub={`${x.qty} units`} amt={x.amount} />)}
       </Section>
     </>
   )
