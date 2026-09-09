@@ -25,7 +25,7 @@ export default function Reports() {
       <div className="text-xs font-bold text-slate-600 mb-2.5 px-0.5">Reports</div>
 
       <div className="flex gap-1.5 mb-3 overflow-x-auto">
-        {[['collections', 'Collections'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['billspdf', 'PDF bills'], ['sales', 'Dealer × Model'], ['purchases', 'Brand buys'], ['profit', 'Profit'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']].map(([k, l]) => (
+        {[['collections', 'Collections'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['billspdf', 'PDF bills'], ['sales', 'Dealer × Model'], ['purchases', 'Brand buys'], ['profit', 'Profit'], ['scorecard', 'Scorecard'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']].map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
             className={'whitespace-nowrap text-[13px] font-semibold px-3.5 py-2 rounded-lg border ' +
               (tab === k ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500')}>{l}</button>
@@ -49,6 +49,7 @@ export default function Reports() {
       {tab === 'sales' && <SalesReport from={from} to={to} />}
       {tab === 'purchases' && <PurchaseBrandReport from={from} to={to} />}
       {tab === 'profit' && <ProfitReport from={from} to={to} />}
+      {tab === 'scorecard' && <BrandScorecard from={from} to={to} />}
       {tab === 'svc' && <SalesVsColl from={from} to={to} />}
     </>
   )
@@ -215,6 +216,42 @@ function Activity({ from, to }) {
   )
 }
 
+function BrandScorecard({ from, to }) {
+  const [r, setR] = useState(null)
+  useEffect(() => { setR(null); api.reportBrandScorecard(from, to).then(setR) }, [from, to])
+  if (!r) return <SkeletonList rows={4} />
+  return (
+    <>
+      <div className="text-[12px] text-slate-500 mb-3 px-0.5">Per-brand snapshot · purchases &amp; sales {from} → {to} · stock value is current</div>
+      {r.rows.length === 0 ? <Row2 a="No brand activity in range" b="" /> : (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {r.rows.map((x, i) => {
+            const pct = x.sale_amount ? Math.round(x.margin / x.sale_amount * 100) : 0
+            return (
+              <div key={i} className="bg-white border border-slate-200/70 rounded-2xl p-4 shadow-soft">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="font-display text-lg font-bold text-slate-900">{x.brand}</div>
+                  <span className={'text-[11px] font-bold px-2 py-0.5 rounded-full ring-1 ' + (x.margin >= 0 ? 'text-brand-700 bg-brand-50 ring-brand-100' : 'text-red-600 bg-red-50 ring-red-100')}>{pct}% margin</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <Metric label="Purchased" value={inr(x.purchase_amount)} sub={x.purchase_qty + ' qty'} />
+                  <Metric label="Sold" value={inr(x.sale_amount)} sub={x.sale_units + ' units'} />
+                  <Metric label="Stock value" value={inr(x.stock_value)} sub={x.stock_units + ' in stock'} />
+                  <Metric label="Margin" value={inr(x.margin)} sub={pct + '%'} tone={x.margin >= 0 ? 'text-brand-700' : 'text-red-600'} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </>
+  )
+}
+
+function Metric({ label, value, sub, tone = 'text-slate-900' }) {
+  return <div className="bg-slate-50 rounded-xl p-2.5"><div className="text-[10px] uppercase tracking-wide text-slate-400">{label}</div><div className={'font-display text-base font-bold ' + tone}>{value}</div><div className="text-[10px] text-slate-400">{sub}</div></div>
+}
+
 function ProfitReport({ from, to }) {
   const [r, setR] = useState(null)
   useEffect(() => { setR(null); api.reportProfit(from, to).then(setR) }, [from, to])
@@ -227,6 +264,17 @@ function ProfitReport({ from, to }) {
         <div className="bg-white border border-slate-200 rounded-xl p-3"><div className="text-[10px] uppercase tracking-wide text-slate-400">Sale value</div><div className="font-display text-lg font-bold">{inr(r.total_sale)}</div></div>
         <div className="bg-white border border-slate-200 rounded-xl p-3"><div className="text-[10px] uppercase tracking-wide text-slate-400">Cost</div><div className="font-display text-lg font-bold">{inr(r.total_cost)}</div></div>
       </div>
+      {r.by_month && r.by_month.length > 0 && (
+        <Section title="Margin by month">
+          {(() => { const mx = Math.max(1, ...r.by_month.map((m) => Math.abs(m.margin))); return r.by_month.map((m, i) => (
+            <div key={i} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
+              <div className="flex justify-between text-[13px] mb-1"><span className="font-semibold text-slate-700">{m.month}</span><span className={'font-bold ' + (m.margin >= 0 ? 'text-brand-700' : 'text-red-600')}>{inr(m.margin)}</span></div>
+              <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden"><div className={'h-full rounded-full ' + (m.margin >= 0 ? 'bg-brand-500' : 'bg-red-500')} style={{ width: Math.round(Math.abs(m.margin) / mx * 100) + '%' }} /></div>
+              <div className="text-[10px] text-slate-400 mt-1">sale {inr(m.sale)} · cost {inr(m.cost)}</div>
+            </div>
+          )) })()}
+        </Section>
+      )}
       <Section title="Margin by model" action={<ExportBtn onClick={() => exportSheet('profit.xlsx', [['Model', 'Brand', 'Qty', 'Sale', 'Cost', 'Margin'], ...r.rows.map((x) => [x.model, x.brand, x.qty, x.sale, x.cost, x.margin])], { money: [3, 4, 5], sheet: 'Profit' })} />}>
         {r.rows.length === 0 ? <Row2 a="No sold units in range" b="" /> : r.rows.map((x, i) => (
           <div key={i} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">

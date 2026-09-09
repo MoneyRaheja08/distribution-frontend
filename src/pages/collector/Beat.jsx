@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Store } from 'lucide-react'
+import { ChevronRight, Store, Search } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { inr } from '../../lib/format.js'
 import { Card, Pill, Spin, EmptyState } from '../../components/ui.jsx'
 
 export default function Beat() {
   const [dealers, setDealers] = useState(null)
+  const [q, setQ] = useState('')
   const nav = useNavigate()
 
   useEffect(() => { api.dealers().then(setDealers) }, [])
   if (!dealers) return <Spin />
 
   const total = dealers.reduce((s, d) => s + d.outstanding, 0)
+  const shown = dealers.filter((d) => !q || d.name.toLowerCase().includes(q.toLowerCase()) || (d.area || '').toLowerCase().includes(q.toLowerCase()))
 
   return (
     <>
@@ -20,12 +22,24 @@ export default function Beat() {
         <Card n={inr(total)} l="My dealers' outstanding" />
         <Card n={dealers.length} l="My dealers" />
       </div>
-      <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400 mb-2.5 px-0.5">My dealers · tap to collect</div>
+
       {dealers.length === 0 ? (
         <EmptyState icon={Store} title="No dealers on your beat yet" hint="Once your manager assigns dealers to you, they'll show up here sorted for your daily round." />
       ) : (
+      <>
+      <div className="relative mb-3">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+        <input data-testid="beat-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search dealer or area…"
+          className="w-full border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-3 py-2.5 bg-white dark:bg-slate-900 text-base outline-none transition-colors focus:border-brand-500 text-slate-900 dark:text-slate-100" />
+      </div>
+      <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400 mb-2.5 px-0.5">
+        {q ? `${shown.length} match${shown.length === 1 ? '' : 'es'}` : 'My dealers · tap to collect'}
+      </div>
+      {shown.length === 0 ? (
+        <div className="text-center text-slate-400 dark:text-slate-500 text-[13px] py-8 bg-white dark:bg-slate-900/60 border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">No dealer matches "{q}".</div>
+      ) : (
       <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0 stagger">
-        {dealers.map((d) => {
+        {shown.map((d) => {
           const over = d.outstanding > d.credit_limit
           const old = d.ageing.age_90p > 0
           return (
@@ -46,6 +60,8 @@ export default function Beat() {
           )
         })}
       </div>
+      )}
+      </>
       )}
     </>
   )

@@ -75,6 +75,7 @@ export const api = {
   reportSales: (from, to, q = '') => USE_MOCK ? mock.reportSales(from, to, q) : http('/reports/sales?from=' + from + '&to=' + to + (q ? '&q=' + encodeURIComponent(q) : '')),
   reportPurchasesBrand: (from, to, brand = '') => USE_MOCK ? mock.reportPurchasesBrand(from, to, brand) : http('/reports/purchases-brand?from=' + from + '&to=' + to + (brand ? '&brand=' + encodeURIComponent(brand) : '')),
   reportProfit: (from, to, brand = '') => USE_MOCK ? mock.reportProfit(from, to, brand) : http('/reports/profit?from=' + from + '&to=' + to + (brand ? '&brand=' + encodeURIComponent(brand) : '')),
+  reportBrandScorecard: (from, to) => USE_MOCK ? mock.reportBrandScorecard(from, to) : http('/reports/brand-scorecard?from=' + from + '&to=' + to),
   agingStock: (days = 60) => USE_MOCK ? mock.agingStock(days) : http('/catalog/aging-stock?days=' + days),
   backup: () => USE_MOCK ? mock.backup() : http('/backup'),
   addBill: (id, bill) => USE_MOCK ? mock.addBill(id, bill) : http('/dealers/' + id + '/bills', { method: 'POST', body: bill }),

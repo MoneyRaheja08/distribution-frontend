@@ -198,11 +198,15 @@ export const reportProfit = (from, to, brand) => {
     { model: 'SAMSUNG LED- UA43T5770', brand: 'SAMSUNG', qty: 2, sale: 58000, cost: 50000, margin: 8000 },
   ].filter((r) => !brand || r.brand === brand)
   const s = (k) => rows.reduce((a, x) => a + x[k], 0)
-  return wait({ from, to, units: rows.reduce((a, x) => a + x.qty, 0), total_sale: s('sale'), total_cost: s('cost'), total_margin: s('margin'), rows })
+  return wait({ from, to, units: rows.reduce((a, x) => a + x.qty, 0), total_sale: s('sale'), total_cost: s('cost'), total_margin: s('margin'), rows,
+    by_month: [{ month: '2026-06', sale: 71045, cost: 61000, margin: 10045 }, { month: '2026-07', sale: 58000, cost: 50000, margin: 8000 }, { month: '2026-08', sale: 33906, cost: 29400, margin: 4506 }] })
 }
-export const agingStock = (days = 60) => wait({ days, count: 2, value: 26500, rows: [
-  { imei: 'CAACKL0000104S8DTBQ2', model: 'HAIER SEMI W/M- HTW80-196BR:NOIDA', brand: 'HAIER', purchase_date: '2026-03-01', days: 96, purchase_rate: 13500 },
+export const agingStock = (days = 60) => wait({ days, count: 2, value: 26500, rows: [  { imei: 'CAACKL0000104S8DTBQ2', model: 'HAIER SEMI W/M- HTW80-196BR:NOIDA', brand: 'HAIER', purchase_date: '2026-03-01', days: 96, purchase_rate: 13500 },
   { imei: 'RZ8N90ABCDXYZ12345', model: 'SAMSUNG LED- UA43T5770', brand: 'SAMSUNG', purchase_date: '2026-04-02', days: 64, purchase_rate: 13000 },
+] })
+export const reportBrandScorecard = (from, to) => wait({ from, to, rows: [
+  { brand: 'HAIER', purchase_amount: 4210000, purchase_qty: 263, sale_amount: 159533, sale_units: 11, stock_value: 238000, stock_units: 16, margin: 22551 },
+  { brand: 'SAMSUNG', purchase_amount: 1200000, purchase_qty: 40, sale_amount: 58000, sale_units: 2, stock_value: 205000, stock_units: 10, margin: 8000 },
 ] })
 export const stockSummary = () => wait({ brands: ['HAIER', 'SAMSUNG'], rows: [
   { model: 'HAIER SEMI W/M- HTW80-196BR:NOIDA', brand: 'HAIER', group: 'HAIER W/M SEMI', total: 12, available: 9, tracked: 'imei' },
