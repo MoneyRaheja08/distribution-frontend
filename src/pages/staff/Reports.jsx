@@ -518,19 +518,19 @@ function Profit2({ from, to }) {
   }, [from, to, brand])
   if (!r) return <SkeletonList rows={5} />
 
-  const toMonth = (v) => v / ((r.period_days || 30) / 30.4)
-  const grossM = toMonth(r.gross)
-  const revenueM = toMonth(r.revenue)
-  const schemeM = revenueM * scheme / 100
-  const opexM = revenueM * opex / 100
+  const days = r.period_days || 30
+  const monthK = 30.4 / days                       // period → 30-day equivalent
+  const schemeP = r.revenue * scheme / 100
+  const opexP = r.revenue * opex / 100
   const payables = r.ann_cogs * payDays / 365
   const wc = Math.max(0, r.stock_value + r.receivables - payables)
-  const finM = wc * coc / 100 / 12
-  const netM = grossM + schemeM - opexM - finM
-  const roce = wc > 0 ? (netM * 12 / wc * 100) : 0
+  const finP = wc * coc / 100 * days / 365
+  const netP = r.gross + schemeP - opexP - finP
+  const netM = netP * monthK
+  const roce = wc > 0 ? (netP * 365 / days / wc * 100) : 0
   const turns = wc > 0 ? (r.ann_cogs / wc) : 0
   const ccc = r.stock_days + r.recv_days - payDays
-  const nmPct = revenueM > 0 ? netM / revenueM * 100 : 0
+  const nmPct = r.revenue > 0 ? netP / r.revenue * 100 : 0
   const label = brand || 'All brands'
 
   const exportMargin = () => exportSheet('gross-margin-' + (brand || 'all').toLowerCase() + '.xlsx', [
@@ -546,9 +546,10 @@ function Profit2({ from, to }) {
     ['Stock value on hand', r.stock_value], ['Receivables' + (r.receivables_estimated ? ' (est. share)' : ''), r.receivables],
     ['Stock days', r.stock_days], ['Dealer credit days', r.recv_days],
     ['Scheme income %', scheme], ['Operating cost %', opex], ['Cost of capital %', coc], ['Supplier credit days', payDays],
-    ['Gross margin / month', Math.round(grossM)], ['Scheme income / month', Math.round(schemeM)],
-    ['Operating cost / month', -Math.round(opexM)], ['Financing cost / month', -Math.round(finM)],
-    ['Net profit / month', Math.round(netM)], ['Net margin %', +nmPct.toFixed(1)],
+    ['Period days', days],
+    ['Gross margin (period)', r.gross], ['Scheme income (period) = revenue × scheme %', Math.round(schemeP)],
+    ['Operating cost (period) = revenue × opex %', -Math.round(opexP)], ['Financing cost (period) = working capital × CoC % × days/365', -Math.round(finP)],
+    ['Net profit (period)', Math.round(netP)], ['Net profit / month (×30.4/days)', Math.round(netM)], ['Net margin %', +nmPct.toFixed(1)],
     ['Working capital tied up', Math.round(wc)], ['Cash conversion cycle (days)', Math.round(ccc)], ['Annual return on capital %', Math.round(roce)],
   ], { sheet: 'Profit 2' })
 
@@ -572,7 +573,7 @@ function Profit2({ from, to }) {
           <div className="text-[12px] text-slate-500 mt-2 max-w-[240px]">Annual return on the capital tied up in {label}.</div>
         </div>
         <div className="flex gap-6">
-          <div><div className="text-xl font-bold">{inr(Math.round(netM))}</div><div className="text-[11px] text-slate-400 mt-0.5">Net profit / month</div></div>
+          <div><div data-testid="p2-net-period" className="text-xl font-bold">{inr(Math.round(netP))}</div><div className="text-[11px] text-slate-400 mt-0.5">Net profit · {days} days</div><div className="text-[11px] text-slate-400">≈ {inr(Math.round(netM))} / month</div></div>
           <div><div className="text-xl font-bold">{turns > 0 ? turns.toFixed(1) + '×' : '—'}</div><div className="text-[11px] text-slate-400 mt-0.5">Capital turns / year</div></div>
         </div>
       </div>
@@ -608,17 +609,21 @@ function Profit2({ from, to }) {
       </div>
 
       <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-5 mt-4">
-        <div className="text-[15px] font-bold text-slate-800 mb-3">Monthly P&amp;L</div>
-        <Row2 a="Gross margin" b={'+' + inr(Math.round(grossM))} />
-        <Row2 a="Scheme income" b={'+' + inr(Math.round(schemeM))} />
-        <Row2 a="Operating cost" b={'−' + inr(Math.round(opexM))} />
-        <Row2 a="Financing cost (interest on working capital)" b={'−' + inr(Math.round(finM))} />
-        <div className="flex justify-between items-baseline pt-3 mt-1 border-t-2 border-slate-800">
-          <span className="font-bold text-slate-900">Net profit / month</span>
-          <span data-testid="p2-net" className={'text-lg font-extrabold ' + (netM >= 0 ? 'text-emerald-700' : 'text-red-600')}>{inr(Math.round(netM))}</span>
+        <div className="flex justify-between items-baseline mb-3">
+          <div className="text-[15px] font-bold text-slate-800">P&amp;L · {from} to {to} ({days} days)</div>
+          <div className="text-[11px] text-slate-400">actual period figures</div>
         </div>
+        <Row2 a="Gross margin (revenue − cost of goods)" b={'+' + inr(r.gross)} />
+        <Row2 a={'Scheme income (' + inr(r.revenue) + ' × ' + scheme + '%)'} b={'+' + inr(Math.round(schemeP))} />
+        <Row2 a={'Operating cost (' + inr(r.revenue) + ' × ' + opex + '%)'} b={'−' + inr(Math.round(opexP))} />
+        <Row2 a={'Financing cost (' + inr(Math.round(wc)) + ' × ' + coc + '% × ' + days + '/365 days)'} b={'−' + inr(Math.round(finP))} />
+        <div className="flex justify-between items-baseline pt-3 mt-1 border-t-2 border-slate-800">
+          <span className="font-bold text-slate-900">Net profit · {days} days</span>
+          <span data-testid="p2-net" className={'text-lg font-extrabold ' + (netP >= 0 ? 'text-emerald-700' : 'text-red-600')}>{inr(Math.round(netP))}</span>
+        </div>
+        <Row2 a={'Net profit / month (× 30.4 ÷ ' + days + ' days)'} b={inr(Math.round(netM))} />
         <Row2 a="Net margin on sales" b={nmPct.toFixed(1) + '%'} />
-        <Row2 a="Working capital tied up" b={inr(Math.round(wc))} />
+        <Row2 a="Working capital tied up (stock + receivables − supplier credit)" b={inr(Math.round(wc))} />
         <Row2 a="Cash conversion cycle" b={Math.round(ccc) + ' days'} />
       </div>
 
@@ -650,10 +655,10 @@ function Profit2({ from, to }) {
       <div className={'rounded-2xl p-4 mt-4 text-[13px] leading-relaxed border ' + (netM < 0 ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-emerald-50 border-emerald-100 text-emerald-900')}>
         <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5">What this says</div>
         {netM < 0
-          ? <>After financing your locked-up capital, you're losing <b>{inr(Math.round(-netM))}/month</b> on {label} at these assumptions. Gross margin of <b>{r.gross_margin_pct}%</b> plus schemes isn't covering opex and interest. Push margin/scheme up or shrink the {Math.round(ccc)}-day cash cycle.</>
-          : <>Your cash stays locked for <b>{Math.round(ccc)} days</b> each cycle. Gross margin is <b>{r.gross_margin_pct}%</b>; after schemes, opex and financing you net <b>{inr(Math.round(netM))}/month</b> — a <b>{Math.round(roce)}%</b> annual return on the <b>{inr(Math.round(wc))}</b> you keep tied up.</>}
+          ? <>After financing your locked-up capital, you're losing <b>{inr(Math.round(-netP))}</b> over these {days} days (≈ {inr(Math.round(-netM))}/month) on {label} at these assumptions. Gross margin of <b>{r.gross_margin_pct}%</b> plus schemes isn't covering opex and interest. Push margin/scheme up or shrink the {Math.round(ccc)}-day cash cycle.</>
+          : <>Your cash stays locked for <b>{Math.round(ccc)} days</b> each cycle. Gross margin is <b>{r.gross_margin_pct}%</b>; after schemes, opex and financing you net <b>{inr(Math.round(netP))}</b> over these {days} days (≈ {inr(Math.round(netM))}/month) — a <b>{Math.round(roce)}%</b> annual return on the <b>{inr(Math.round(wc))}</b> you keep tied up.</>}
       </div>
-      <div className="text-[11px] text-slate-400 mt-3">Revenue, cost and stock are your imported {label} sales &amp; purchases in this date range. {r.receivables_estimated ? 'Receivables are an estimated share of total dealer outstanding, split by this brand\u2019s revenue.' : 'Receivables are your total dealer outstanding.'} Scheme, opex, cost-of-capital and credit days are your inputs above.</div>
+      <div className="text-[11px] text-slate-400 mt-3">Revenue, cost and stock are your imported {label} sales &amp; purchases in this date range. {r.receivables_estimated ? 'Receivables are an estimated share of total dealer outstanding, split by this brand\u2019s revenue.' : 'Receivables are your total dealer outstanding.'} Scheme, opex, cost-of-capital and credit days are your inputs above. Monthly figures are the period figures scaled by 30.4 ÷ {days} days; annual return = net profit × 365 ÷ {days} ÷ working capital.</div>
     </>
   )
 }
