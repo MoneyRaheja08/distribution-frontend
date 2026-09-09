@@ -1,9 +1,11 @@
-import { useState } from 'react'
-import { UploadCloud, ShoppingCart, PackagePlus, CheckCircle2, AlertTriangle, Loader2, FileSpreadsheet } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { UploadCloud, ShoppingCart, PackagePlus, CheckCircle2, AlertTriangle, Loader2, FileSpreadsheet, Undo2 } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { toast } from '../../lib/toast.js'
 import { inr } from '../../lib/format.js'
 import { Modal } from '../../components/ui.jsx'
+import { useAuth } from '../../auth/AuthContext.jsx'
+import { confirmDialog } from '../../lib/confirm.js'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 function parseRaw(raw, fmt) {
@@ -51,15 +53,55 @@ function DateFormatBar({ dateInfo, fmt, setFmt }) {
 }
 
 export default function Imports() {
+  const [refresh, setRefresh] = useState(0)
+  const bump = () => setRefresh((r) => r + 1)
   return (
     <>
       <h1 className="font-display text-2xl font-bold tracking-tight mb-1">Imports</h1>
       <p className="text-[13px] text-slate-500 mb-6 max-w-xl">Import MARG <b>Sale</b> &amp; <b>Purchase</b> CSVs. The brand is read from the file, so any brand works — with or without IMEI/serial numbers.</p>
       <div className="grid gap-4 lg:grid-cols-2">
-        <SaleImport />
-        <PurchaseImport />
+        <SaleImport onImported={bump} />
+        <PurchaseImport onImported={bump} />
       </div>
+      <RecentImports refresh={refresh} onChanged={bump} />
     </>
+  )
+}
+
+function RecentImports({ refresh, onChanged }) {
+  const { auth } = useAuth()
+  const isAdmin = auth.user.role === 'admin'
+  const [rows, setRows] = useState(null)
+  useEffect(() => { api.importBatches().then(setRows).catch(() => setRows([])) }, [refresh])
+  if (!rows || !rows.length) return null
+  const undo = async (b) => {
+    if (!(await confirmDialog('Undo this ' + b.kind + ' import (' + (b.filename || b.brand || '') + ')? This removes the bills and stock it added.', { danger: true, confirmLabel: 'Undo import' }))) return
+    try { await api.undoImport(b.id); toast.success('Import undone'); onChanged?.() } catch (e) { toast.error(e.message) }
+  }
+  return (
+    <div className="mt-6" data-testid="recent-imports">
+      <h2 className="font-display text-[15px] font-bold text-slate-900 mb-2">Recent imports</h2>
+      <div className="bg-white border border-slate-200/70 rounded-2xl divide-y divide-slate-50 shadow-soft overflow-hidden">
+        {rows.map((b) => {
+          const c = b.counts || {}
+          const sub = b.kind === 'sale'
+            ? `${c.bills_added || 0} bills · ${c.dealers_created || 0} new dealers · ${c.units_sold || 0} sold`
+            : `${c.units_added || 0} units · ${c.qty_added || 0} qty`
+          return (
+            <div key={b.id} data-testid={'import-batch-' + b.id} className="flex items-center justify-between px-4 py-3">
+              <div className="min-w-0 pr-2">
+                <div className="text-[13px] font-semibold text-slate-800 truncate flex items-center gap-1.5">
+                  <span className={'text-[10px] font-bold px-1.5 py-0.5 rounded ' + (b.kind === 'sale' ? 'bg-brand-50 text-brand-700' : 'bg-slate-100 text-slate-600')}>{(b.kind || '').toUpperCase()}</span>
+                  {b.filename || (b.brand + ' ' + b.kind)}
+                </div>
+                <div className="text-[11px] text-slate-400 mt-0.5">{sub} · {(b.created_at || '').slice(0, 10)}</div>
+              </div>
+              {isAdmin && <button data-testid={'undo-import-' + b.id} onClick={() => undo(b)} className="shrink-0 text-[12px] font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg px-3 py-1.5 flex items-center gap-1 transition-colors"><Undo2 size={13} />Undo</button>}
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
@@ -113,7 +155,7 @@ function ErrBox({ msg, onRetry }) {
   )
 }
 
-function SaleImport() {
+function SaleImport({ onImported }) {
   const [busy, setBusy] = useState(false)
   const [pv, setPv] = useState(null)
   const [file, setFile] = useState(null)
@@ -127,7 +169,7 @@ function SaleImport() {
   }
   const commit = async () => {
     setBusy(true); setErr(null)
-    try { const r = await api.importSaleCommit(file, dfmt); setDone(r); setPv(null); toast.success('Sale imported to ledger') }
+    try { const r = await api.importSaleCommit(file, dfmt); setDone(r); setPv(null); toast.success('Sale imported to ledger'); onImported?.() }
     catch (e) { setErr(e.message); toast.error(e.message) }
     setBusy(false)
   }
@@ -184,7 +226,7 @@ function SalePreview({ pv, busy, fmt, setFmt, onClose, onConfirm }) {
   )
 }
 
-function PurchaseImport() {
+function PurchaseImport({ onImported }) {
   const [busy, setBusy] = useState(false)
   const [pv, setPv] = useState(null)
   const [file, setFile] = useState(null)
@@ -198,7 +240,7 @@ function PurchaseImport() {
   }
   const commit = async () => {
     setBusy(true); setErr(null)
-    try { const r = await api.importPurchaseCommit(file, dfmt); setDone(r); setPv(null); toast.success('Purchase added to stock') }
+    try { const r = await api.importPurchaseCommit(file, dfmt); setDone(r); setPv(null); toast.success('Purchase added to stock'); onImported?.() }
     catch (e) { setErr(e.message); toast.error(e.message) }
     setBusy(false)
   }

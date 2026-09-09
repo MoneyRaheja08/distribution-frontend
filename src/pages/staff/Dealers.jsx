@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Loader2, Upload, FileText, Download, Search, ChevronRight, Store } from 'lucide-react'
+import { Loader2, Upload, FileText, Download, Search, ChevronRight, Store, GitMerge } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { toast } from '../../lib/toast.js'
 import { confirmDialog } from '../../lib/confirm.js'
@@ -22,8 +22,9 @@ export default function Dealers() {
   const [ledgerOf, setLedgerOf] = useState(null)
   const [modal, setModal] = useState(null)
   const [q, setQ] = useState('')
+  const [dupes, setDupes] = useState([])
 
-  const reload = () => api.dealers().then(setData)
+  const reload = () => { api.dealers().then(setData); if (isAdmin) api.dealerDuplicates().then(setDupes).catch(() => setDupes([])) }
   useEffect(() => { reload(); api.selectableUsers().then((us) => setCollectors(us.filter((u) => u.role === 'collector'))) }, [])
 
   if (ledgerOf) return <Ledger dealer={ledgerOf} onBack={() => { setLedgerOf(null); reload() }} />
@@ -41,6 +42,11 @@ export default function Dealers() {
         <button onClick={() => setModal('pdf')} className="flex-1 text-[12px] font-semibold text-slate-600 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-xl py-2.5 flex items-center justify-center gap-1.5 shadow-soft transition-colors"><FileText size={14} />Bill from PDF</button>
         {isAdmin && <button onClick={() => setModal('bulk')} className="flex-1 text-[12px] font-semibold text-slate-600 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-xl py-2.5 flex items-center justify-center gap-1.5 shadow-soft transition-colors"><Upload size={14} />Bulk bills</button>}
       </div>
+      {isAdmin && dupes.length > 0 && (
+        <button data-testid="review-duplicates-btn" onClick={() => setModal('merge')} className="w-full mb-3 text-[12px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 hover:bg-amber-100 rounded-xl py-2.5 flex items-center justify-center gap-1.5 transition-colors">
+          <GitMerge size={14} />Review {dupes.length} possible duplicate dealer{dupes.length > 1 ? 's' : ''}
+        </button>
+      )}
       <div className="relative mb-3">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search dealer or area…"
@@ -75,7 +81,51 @@ export default function Dealers() {
       {editing && <DealerForm dealer={editing} collectors={collectors} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload() }} />}
       {modal === 'bulk' && <BulkModal onClose={() => setModal(null)} onDone={() => { setModal(null); reload() }} />}
       {modal === 'pdf' && <PdfModal dealers={data} onClose={() => setModal(null)} onDone={() => { setModal(null); reload() }} />}
+      {modal === 'merge' && <MergeModal groups={dupes} onClose={() => setModal(null)} onMerged={reload} />}
     </>
+  )
+}
+
+function MergeModal({ groups, onClose, onMerged }) {
+  return (
+    <Modal title="Possible duplicate dealers" onClose={onClose}>
+      {!groups.length ? (
+        <div className="text-[13px] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-3">No more duplicates — nice and clean. <button onClick={onClose} className="font-semibold text-emerald-700 hover:underline">Close</button></div>
+      ) : (
+        <>
+          <div className="text-[12px] text-slate-500 mb-3">These look like the same shop. Pick the one to <b>keep</b> — its ledger absorbs the others, then the duplicates are removed.</div>
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+            {groups.map((g) => <MergeGroup key={g.key} g={g} onMerged={onMerged} />)}
+          </div>
+        </>
+      )}
+    </Modal>
+  )
+}
+
+function MergeGroup({ g, onMerged }) {
+  const [keep, setKeep] = useState(g.dealers[0].id)
+  const [busy, setBusy] = useState(false)
+  const merge = async () => {
+    const sources = g.dealers.filter((d) => d.id !== keep).map((d) => d.id)
+    if (!sources.length) return
+    setBusy(true)
+    try { await api.mergeDealers(keep, sources); toast.success('Dealers merged'); onMerged() }
+    catch (e) { toast.error(e.message); setBusy(false) }
+  }
+  return (
+    <div data-testid={'merge-group-' + g.key} className="border border-slate-200 rounded-xl p-3">
+      <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">{g.reason === 'phone' ? 'Same phone number' : 'Same name'}</div>
+      {g.dealers.map((d) => (
+        <label key={d.id} className="flex items-center gap-2 py-1 text-[13px] cursor-pointer">
+          <input type="radio" name={'keep-' + g.key} checked={keep === d.id} onChange={() => setKeep(d.id)} />
+          <span className="flex-1 min-w-0 truncate"><b className="text-slate-800">{d.name}</b> <span className="text-slate-400">· {d.phone || 'no phone'} · {inr(d.outstanding)} · {d.bills} bill(s)</span></span>
+        </label>
+      ))}
+      <button data-testid="merge-group-btn" onClick={merge} disabled={busy} className="mt-2 w-full bg-slate-900 hover:bg-slate-800 text-white text-[13px] font-semibold py-2 rounded-lg disabled:opacity-60 flex items-center justify-center gap-1.5">
+        {busy && <Loader2 size={14} className="animate-spin" />}Keep selected &amp; merge the rest
+      </button>
+    </div>
   )
 }
 
