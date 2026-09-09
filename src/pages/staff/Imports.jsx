@@ -22,7 +22,7 @@ function Dropzone({ testid, onFile, busy, icon: Icon, title, hint }) {
   const pick = (e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = '' }
   return (
     <label className="group flex flex-col items-center justify-center text-center border-2 border-dashed border-slate-200 hover:border-brand-400 rounded-2xl py-8 px-4 cursor-pointer bg-slate-50/60 hover:bg-brand-50/40 transition-colors">
-      <input data-testid={testid} type="file" accept=".csv,text/csv" onChange={pick} className="hidden" disabled={busy} />
+      <input data-testid={testid} type="file" accept=".csv,.txt,text/csv,application/vnd.ms-excel,application/csv" onChange={pick} className="hidden" disabled={busy} />
       <div className="w-12 h-12 rounded-2xl bg-brand-50 ring-1 ring-brand-100 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
         {busy ? <Loader2 size={22} className="text-brand-600 animate-spin" /> : <Icon size={22} className="text-brand-600" />}
       </div>
@@ -59,20 +59,30 @@ function ResultBox({ lines, onReset }) {
   )
 }
 
+function ErrBox({ msg, onRetry }) {
+  return (
+    <div className="mt-3 flex items-start gap-2 text-[12px] text-red-800 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+      <AlertTriangle size={15} className="mt-0.5 shrink-0" />
+      <div><div className="font-semibold">Import failed</div><div className="mt-0.5 break-words">{msg}</div>{onRetry && <button onClick={onRetry} className="mt-1 font-semibold text-red-700 hover:underline">Dismiss</button>}</div>
+    </div>
+  )
+}
+
 function SaleImport() {
   const [busy, setBusy] = useState(false)
   const [pv, setPv] = useState(null)
   const [file, setFile] = useState(null)
   const [done, setDone] = useState(null)
+  const [err, setErr] = useState(null)
   const onFile = async (f) => {
-    setFile(f); setBusy(true); setDone(null)
-    try { setPv(await api.importSalePreview(f)) } catch (e) { toast.error(e.message) }
+    setFile(f); setBusy(true); setDone(null); setErr(null)
+    try { setPv(await api.importSalePreview(f)) } catch (e) { setErr(e.message); toast.error(e.message) }
     setBusy(false)
   }
   const commit = async () => {
-    setBusy(true)
+    setBusy(true); setErr(null)
     try { const r = await api.importSaleCommit(file); setDone(r); setPv(null); toast.success('Sale imported to ledger') }
-    catch (e) { toast.error(e.message) }
+    catch (e) { setErr(e.message); toast.error(e.message) }
     setBusy(false)
   }
   return (
@@ -86,6 +96,7 @@ function SaleImport() {
       ) : (
         <Dropzone testid="sale-file-input" onFile={onFile} busy={busy} icon={UploadCloud} title="Choose Sale CSV" hint="e.g. SALE HAIER.csv" />
       )}
+      {err && <ErrBox msg={err} onRetry={() => setErr(null)} />}
       {pv && <SalePreview pv={pv} busy={busy} onClose={() => setPv(null)} onConfirm={commit} />}
     </Card>
   )
@@ -130,15 +141,16 @@ function PurchaseImport() {
   const [pv, setPv] = useState(null)
   const [file, setFile] = useState(null)
   const [done, setDone] = useState(null)
+  const [err, setErr] = useState(null)
   const onFile = async (f) => {
-    setFile(f); setBusy(true); setDone(null)
-    try { setPv(await api.importPurchasePreview(f)) } catch (e) { toast.error(e.message) }
+    setFile(f); setBusy(true); setDone(null); setErr(null)
+    try { setPv(await api.importPurchasePreview(f)) } catch (e) { setErr(e.message); toast.error(e.message) }
     setBusy(false)
   }
   const commit = async () => {
-    setBusy(true)
+    setBusy(true); setErr(null)
     try { const r = await api.importPurchaseCommit(file); setDone(r); setPv(null); toast.success('Purchase added to stock') }
-    catch (e) { toast.error(e.message) }
+    catch (e) { setErr(e.message); toast.error(e.message) }
     setBusy(false)
   }
   return (
@@ -152,6 +164,7 @@ function PurchaseImport() {
       ) : (
         <Dropzone testid="purchase-file-input" onFile={onFile} busy={busy} icon={FileSpreadsheet} title="Choose Purchase CSV" hint="e.g. PURCHASE HAIER.csv" />
       )}
+      {err && <ErrBox msg={err} onRetry={() => setErr(null)} />}
       {pv && <PurchasePreview pv={pv} busy={busy} onClose={() => setPv(null)} onConfirm={commit} />}
     </Card>
   )
