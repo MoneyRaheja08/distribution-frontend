@@ -273,4 +273,4 @@ export const deleteProduct = (plid, pid) => { store.plproducts[plid] = (store.pl
 
 export const me = () => wait({ user: store.users.find((u) => u.id === store._me) || null })
 
-export const reportProfit2 = () => wait({ from: '', to: '', period_days: 30, revenue: 4000000, cogs: 3800000, gross: 200000, gross_margin_pct: 5, units: 120, stock_value: 3120000, receivables: 3945000, ann_sales: 48000000, ann_cogs: 45600000, stock_days: 25, recv_days: 30 })
+export const reportProfit2 = () => wait({ brand: 'HAIER', brands: ['HAIER', 'SAMSUNG'], receivables_estimated: true, total_receivables: 3945000, from: '', to: '', period_days: 30, revenue: 4000000, cogs: 3800000, gross: 200000, gross_margin_pct: 5, units: 120, stock_value: 3120000, receivables: 3945000, ann_sales: 48000000, ann_cogs: 45600000, stock_days: 25, recv_days: 30 })

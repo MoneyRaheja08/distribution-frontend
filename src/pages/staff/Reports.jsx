@@ -487,12 +487,14 @@ function P2Slider({ label, val, set, min, max, step, unit, hint }) {
 
 function Profit2({ from, to }) {
   const [r, setR] = useState(null)
+  const [brand, setBrand] = useState('HAIER')
   const [scheme, setScheme] = useState(1.5)
   const [opex, setOpex] = useState(2)
   const [coc, setCoc] = useState(12)
   const [payDays, setPayDays] = useState(7)
-  useEffect(() => { setR(null); api.reportProfit2(from, to).then(setR) }, [from, to])
+  useEffect(() => { setR(null); api.reportProfit2(from, to, brand).then(setR) }, [from, to, brand])
   if (!r) return <SkeletonList rows={5} />
+  const brandOpts = ['', ...(r.brands || [])]
 
   const factor = 365 / (r.period_days || 30)
   const perMonthK = (r.period_days || 30) / 30.4     // scale period totals to a month
@@ -512,6 +514,13 @@ function Profit2({ from, to }) {
 
   return (
     <>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-[12px] font-semibold text-slate-500">Brand</span>
+        <select value={brand} onChange={(e) => setBrand(e.target.value)}
+          className="border border-slate-200 rounded-lg px-3 py-2 bg-white text-[13px] font-semibold text-slate-700 outline-none focus:border-emerald-500">
+          {brandOpts.map((b) => <option key={b} value={b}>{b === '' ? 'All brands' : b}</option>)}
+        </select>
+      </div>
       <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-5 mb-4 flex flex-wrap items-end gap-6">
         <div className="flex-1 min-w-[160px]">
           <div className={'text-5xl font-extrabold tracking-tight ' + (netM < 0 ? 'text-red-600' : 'text-emerald-700')}>{wc > 0 ? Math.round(roce) + '%' : '—'}</div>
@@ -525,21 +534,21 @@ function Profit2({ from, to }) {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-5">
-          <div className="text-[12px] font-bold text-slate-500 uppercase tracking-wide mb-3">From your real data · {from} to {to}</div>
+          <div className="text-[12px] font-bold text-slate-500 uppercase tracking-wide mb-3">{brand || 'All brands'} · from your real data · {from} to {to}</div>
           <Row2 a="Revenue (sales)" b={inr(r.revenue)} />
           <Row2 a="Cost of goods (from purchases)" b={inr(r.cogs)} />
           <Row2 a={'Real gross margin · ' + r.gross_margin_pct + '%'} b={inr(r.gross)} bold />
           <Row2 a="Units sold" b={r.units} />
           <div className="h-2" />
           <Row2 a="Stock value on hand" b={inr(r.stock_value)} />
-          <Row2 a="Receivables (dealer credit)" b={inr(r.receivables)} />
+          <Row2 a={"Receivables (dealer credit)" + (r.receivables_estimated ? " · est. share" : "")} b={inr(r.receivables)} />
           <Row2 a="Stock days (real)" b={r.stock_days + ' d'} />
           <Row2 a="Dealer credit days (real)" b={r.recv_days + ' d'} />
         </div>
 
         <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-5">
           <div className="text-[12px] font-bold text-slate-500 uppercase tracking-wide mb-3">Your assumptions (not in data)</div>
-          <P2Slider label="Scheme / incentive income" val={scheme} set={setScheme} min={0} max={5} step={0.25} unit="%" hint="Extra % from Haier for targets, displays — if you claim it." />
+          <P2Slider label="Scheme / incentive income" val={scheme} set={setScheme} min={0} max={12} step={0.25} unit="%" hint="Extra % from the brand for targets, displays — Haier schemes can exceed 5%." />
           <P2Slider label="Operating cost" val={opex} set={setOpex} min={0} max={6} step={0.25} unit="%" hint="Godown, staff, delivery, damage as % of sales." />
           <P2Slider label="Cost of capital" val={coc} set={setCoc} min={6} max={24} step={0.5} unit="%" hint="Interest on the money you keep locked up." />
           <P2Slider label="Haier credit days" val={payDays} set={setPayDays} min={0} max={45} step={1} unit=" d" hint="How long you get to pay Haier (not tracked yet)." />
@@ -567,7 +576,7 @@ function Profit2({ from, to }) {
           ? <>After financing your locked-up capital, you're losing <b>{inr(Math.round(-netM))}/month</b> at these assumptions. Your real gross margin of <b>{r.gross_margin_pct}%</b> plus schemes isn't covering opex and interest. Push margin/scheme up or shrink the {Math.round(ccc)}-day cash cycle.</>
           : <>Your cash stays locked for <b>{Math.round(ccc)} days</b> each cycle. Real gross margin is <b>{r.gross_margin_pct}%</b>; after schemes, opex and financing you net <b>{inr(Math.round(netM))}/month</b> — a <b>{Math.round(roce)}%</b> annual return on the <b>{inr(Math.round(wc))}</b> you keep tied up. Collecting faster lifts this more than chasing extra margin.</>}
       </div>
-      <div className="text-[11px] text-slate-400 mt-3">Revenue, cost, stock and receivables are from your imported sales &amp; purchases. Scheme, opex, cost-of-capital and Haier credit days are your inputs above.</div>
+      <div className="text-[11px] text-slate-400 mt-3">Revenue, cost and stock are your imported {brand || 'all-brand'} sales &amp; purchases. {r.receivables_estimated ? 'Receivables are an estimated share of total dealer outstanding, split by this brand\u2019s revenue (dealers owe across brands).' : 'Receivables are your total dealer outstanding.'} Scheme, opex, cost-of-capital and Haier credit days are your inputs above.</div>
     </>
   )
 }
