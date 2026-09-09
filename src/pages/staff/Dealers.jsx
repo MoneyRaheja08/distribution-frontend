@@ -84,6 +84,7 @@ function Ledger({ dealer, onBack }) {
   const isAdmin = auth.user.role === 'admin'
   const [led, setLed] = useState(null)
   const [modal, setModal] = useState(null)
+  const [billView, setBillView] = useState(null)
   const [visited, setVisited] = useState(dealer.visited_today)
   const [marking, setMarking] = useState(false)
   const canCollect = isAdmin || (auth.user.role === 'manager' && auth.user.can_collect)
@@ -114,9 +115,16 @@ function Ledger({ dealer, onBack }) {
         <button onClick={shareStatement} className="flex-1 min-w-[30%] bg-[#075E54] text-white text-[13px] font-semibold py-2.5 rounded-lg">Share statement</button>
       </div>
       <div className="text-xs font-bold text-slate-600 mb-2 px-0.5">Ledger · oldest first</div>
-      <LedgerTable entries={led.entries} onDelete={isAdmin ? async (e) => {
-        if (await confirmDialog('Delete this payment of ' + inr(e.credit) + '? The outstanding will go back up.', { danger: true, confirmLabel: 'Delete' })) { await api.deletePayment(e.id); load(); toast.success('Payment deleted') }
-      } : undefined} />
+      <LedgerTable entries={led.entries}
+        onBill={async (e) => { try { setBillView(await api.billDetail(e.id)) } catch (err) { toast.error(err.message) } }}
+        onDelete={isAdmin ? async (e) => {
+          if (e.type === 'payment') {
+            if (await confirmDialog('Delete this payment of ' + inr(e.credit) + '? The outstanding will go back up.', { danger: true, confirmLabel: 'Delete' })) { await api.deletePayment(e.id); load(); toast.success('Payment deleted') }
+          } else if (await confirmDialog('Delete bill ' + (e.ref || '') + ' of ' + inr(e.debit) + '? This removes it from the ledger' + (e.source === 'sale_csv' ? ' and returns its stock to inventory' : '') + '.', { danger: true, confirmLabel: 'Delete' })) {
+            await api.deleteBill(e.id); load(); toast.success('Bill deleted')
+          }
+        } : undefined} />
+      {billView && <BillLinesModal bill={billView} onClose={() => setBillView(null)} />}
       {modal === 'bill' && <BillModal dealer={dealer} onClose={() => setModal(null)} onDone={() => { setModal(null); load() }} />}
       {modal === 'statement' && <StatementModal dealer={dealer} onClose={() => setModal(null)} onDone={() => { setModal(null); load() }} />}
       {modal === 'collect' && <CollectModal dealer={dealer} outstanding={led.outstanding} onClose={() => setModal(null)} onDone={() => { setModal(null); load() }} />}
@@ -124,8 +132,31 @@ function Ledger({ dealer, onBack }) {
   )
 }
 
-function CollectModal({ dealer, outstanding, onClose, onDone }) {
-  const [f, setF] = useState({ amount: '', mode: 'RTGS', cheque: '' })
+function BillLinesModal({ bill, onClose }) {
+  const lines = bill.lines || []
+  return (
+    <Modal title={'Bill ' + (bill.bill_no || '')} onClose={onClose}>
+      <div className="text-[12px] text-slate-500 mb-3">{bill.date || '—'} · total <b className="text-slate-800">{inr(bill.amount)}</b>{bill.source ? ` · ${bill.source.replace('_', ' ')}` : ''}</div>
+      {lines.length ? (
+        <div data-testid="bill-lines" className="max-h-72 overflow-y-auto border border-slate-100 rounded-xl divide-y divide-slate-50">
+          {lines.map((l, i) => (
+            <div key={i} className="flex items-center justify-between px-3 py-2 text-[13px]">
+              <div className="min-w-0 pr-2">
+                <div className="font-semibold text-slate-800 truncate">{l.model || '—'}</div>
+                <div className="text-[11px] text-slate-400">{[l.brand, l.qty ? 'qty ' + l.qty : null, l.imei].filter(Boolean).join(' · ')}</div>
+              </div>
+              <span className="font-bold text-slate-900 shrink-0">{inr(l.amount)}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-[13px] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-3">No line items recorded for this bill (added manually, from a statement or a PDF). Billed amount: <b className="text-slate-800">{inr(bill.amount)}</b></div>
+      )}
+    </Modal>
+  )
+}
+
+function CollectModal({ dealer, outstanding, onClose, onDone }) {  const [f, setF] = useState({ amount: '', mode: 'RTGS', cheque: '' })
   const [busy, setBusy] = useState(false)
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
   const save = async () => {

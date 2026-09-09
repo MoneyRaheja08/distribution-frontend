@@ -136,7 +136,7 @@ function SaleImport() {
       {done ? (
         <ResultBox onReset={() => setDone(null)} lines={[
           `${done.bills_added} bill(s) posted to ledgers`,
-          `${done.skipped_unmatched} skipped (dealer not in ledger) · ${done.skipped_duplicates} duplicate(s)`,
+          `${done.dealers_created || 0} new dealer(s) created · ${done.skipped_duplicates} duplicate(s) · ${done.skipped_unmatched} unposted`,
           `${done.units_sold} unit(s) marked sold${done.qty_sold ? ` · ${done.qty_sold} qty` : ''}`,
         ]} />
       ) : (
@@ -154,8 +154,8 @@ function SalePreview({ pv, busy, fmt, setFmt, onClose, onConfirm }) {
     <Modal title={`Review sale import${pv.brand ? ' · ' + pv.brand : ''}`} onClose={onClose}>
       <DateFormatBar dateInfo={pv.date_info} fmt={fmt} setFmt={setFmt} />
       <div className="grid grid-cols-3 gap-2 mb-3">
-        <Stat label="Will post" value={s.matched} tone="text-brand-700" />
-        <Stat label="Unmatched" value={s.unmatched} tone="text-amber-700" />
+        <Stat label="Will post" value={s.will_post} tone="text-brand-700" />
+        <Stat label="New dealers" value={s.to_create} tone="text-emerald-700" />
         <Stat label="Duplicates" value={s.duplicates} tone="text-slate-500" />
       </div>
       <div className="text-[12px] text-slate-500 mb-2">Ledger total to post: <b className="text-slate-800">{inr(s.matched_total)}</b> · {s.total_units} unit(s)</div>
@@ -168,16 +168,17 @@ function SalePreview({ pv, busy, fmt, setFmt, onClose, onConfirm }) {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <span className="font-bold text-slate-900">{inr(b.total)}</span>
-              {b.duplicate ? <Badge tone="slate">Duplicate</Badge> : b.matched ? <Badge tone="brand">Post</Badge> : <Badge tone="amber">Skip</Badge>}
+              {b.duplicate ? <Badge tone="slate">Duplicate</Badge> : b.matched ? <Badge tone="brand">Post</Badge> : b.new_dealer ? <Badge tone="emerald">New</Badge> : <Badge tone="amber">Skip</Badge>}
             </div>
           </div>
         ))}
       </div>
-      {s.unmatched > 0 && <div className="flex items-start gap-2 mt-3 text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2"><AlertTriangle size={15} className="mt-0.5 shrink-0" /><span>Unmatched dealers are <b>not</b> auto-created — add them to your ledger first, then re-import to post those bills.</span></div>}
+      {s.to_create > 0 && <div className="flex items-start gap-2 mt-3 text-[12px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2"><CheckCircle2 size={15} className="mt-0.5 shrink-0" /><span><b>{s.to_create}</b> new dealer(s) will be created automatically from their mobile number, then their bills posted.</span></div>}
+      {s.unmatched > 0 && <div className="flex items-start gap-2 mt-2 text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2"><AlertTriangle size={15} className="mt-0.5 shrink-0" /><span><b>{s.unmatched}</b> bill(s) have no party name and can't be posted.</span></div>}
       {s.unknown_serials > 0 && <div className="flex items-start gap-2 mt-2 text-[12px] text-orange-800 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2"><AlertTriangle size={15} className="mt-0.5 shrink-0" /><span><b>{s.unknown_serials}</b> IMEI(s) here were never purchased/stocked{s.unknown_sample?.length ? ` (e.g. ${s.unknown_sample.slice(0, 3).join(', ')})` : ''}. They'll still be recorded as sold — verify these serials.</span></div>}
-      <button data-testid="sale-confirm-btn" onClick={onConfirm} disabled={busy || s.matched === 0}
+      <button data-testid="sale-confirm-btn" onClick={onConfirm} disabled={busy || s.will_post === 0}
         className="w-full mt-4 bg-gradient-to-b from-brand-500 to-brand-700 hover:from-brand-400 hover:to-brand-600 disabled:opacity-50 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 shadow-glow transition-all">
-        {busy ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}Post {s.matched} bill(s) &amp; mark stock sold
+        {busy ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}Post {s.will_post} bill(s) &amp; mark stock sold
       </button>
     </Modal>
   )
@@ -249,6 +250,6 @@ function PurchasePreview({ pv, busy, fmt, setFmt, onClose, onConfirm }) {
 }
 
 function Badge({ tone, children }) {
-  const map = { brand: 'text-brand-700 bg-brand-50 ring-brand-100', amber: 'text-amber-700 bg-amber-50 ring-amber-100', slate: 'text-slate-500 bg-slate-100 ring-slate-200' }
+  const map = { brand: 'text-brand-700 bg-brand-50 ring-brand-100', amber: 'text-amber-700 bg-amber-50 ring-amber-100', emerald: 'text-emerald-700 bg-emerald-50 ring-emerald-100', slate: 'text-slate-500 bg-slate-100 ring-slate-200' }
   return <span className={'text-[10px] font-bold px-2 py-0.5 rounded-full ring-1 ' + map[tone]}>{children}</span>
 }

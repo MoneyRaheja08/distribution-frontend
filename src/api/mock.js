@@ -133,6 +133,8 @@ export const importPricelist = (id, products) => {
   return wait({ ok: true, count: products.length })
 }
 export const selectableUsers = () => wait(store.users.filter((u) => u.role !== 'admin').map((u) => ({ id: u.id, name: u.name, role: u.role })))
+export const billDetail = () => wait({ bill_no: '', date: null, amount: 0, source: 'manual', lines: [], line_total: 0 })
+export const deleteBill = () => wait({ ok: true })
 
 // ---- ledger / bills (mock stubs) ----
 export const dealerLedger = (id) => {

@@ -80,6 +80,8 @@ export const api = {
   agingStock: (days = 60) => USE_MOCK ? mock.agingStock(days) : http('/catalog/aging-stock?days=' + days),
   backup: () => USE_MOCK ? mock.backup() : http('/backup'),
   addBill: (id, bill) => USE_MOCK ? mock.addBill(id, bill) : http('/dealers/' + id + '/bills', { method: 'POST', body: bill }),
+  billDetail: (bid) => USE_MOCK ? mock.billDetail(bid) : http('/bills/' + bid),
+  deleteBill: (bid) => USE_MOCK ? mock.deleteBill(bid) : http('/bills/' + bid, { method: 'DELETE' }),
   seedDealer: (id, payload) => USE_MOCK ? mock.seedDealer(id, payload) : http('/dealers/' + id + '/seed', { method: 'POST', body: payload }),
   bulkBills: (bills) => USE_MOCK ? mock.bulkBills(bills) : http('/bills/bulk', { method: 'POST', body: { bills } }),
   pendingPayments: () => USE_MOCK ? mock.pendingPayments() : http('/payments/pending'),

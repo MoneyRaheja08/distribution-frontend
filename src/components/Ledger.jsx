@@ -1,5 +1,5 @@
 import { inr } from '../lib/format.js'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Eye } from 'lucide-react'
 
 const BUCKETS = { age_0_30: '0–30', age_31_60: '31–60', age_61_90: '61–90', age_90p: '90+' }
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -66,7 +66,7 @@ export function LedgerHeader({ name, outstanding, ageing = {}, creditLimit = 0, 
 }
 
 // Traditional khata: oldest at top, balance builds down, grouped by month.
-export function LedgerTable({ entries = [], onDelete }) {
+export function LedgerTable({ entries = [], onDelete, onBill }) {
   if (!entries.length) {
     return <div className="bg-white dark:bg-slate-900/70 border border-slate-200/70 dark:border-slate-800 rounded-2xl p-4 text-[12px] text-slate-400 dark:text-slate-500 shadow-soft">No entries yet.</div>
   }
@@ -88,6 +88,19 @@ export function LedgerTable({ entries = [], onDelete }) {
           <div key={i}>
             {showMonth && <div className="px-3 py-1 bg-slate-50/70 dark:bg-slate-800/40 text-[10.5px] font-semibold text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800">{m}</div>}
             <div className="flex items-center px-3 py-2.5 border-b border-slate-50 dark:border-slate-800/70 last:border-0 text-[13px] hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+              {isBill && onBill && e.id ? (
+                <button data-testid={'ledger-bill-' + (e.ref || i)} onClick={() => onBill(e)} className="flex-1 min-w-0 pr-2 text-left group/bill">
+                  <div className="font-semibold text-slate-800 dark:text-slate-200 truncate flex items-center gap-1 group-hover/bill:text-brand-700 dark:group-hover/bill:text-brand-400">
+                    {e.ref === 'Opening' ? 'Opening balance' : 'Bill ' + e.ref}<Eye size={12} className="opacity-40 shrink-0" />
+                  </div>
+                  <div className="text-[11px] text-slate-400 dark:text-slate-500">
+                    {fmtDay(e.date)}
+                    {e.debit > 0 && e.days != null && e.ref !== 'Opening' && (
+                      <span className={e.bucket === 'age_90p' ? 'text-red-600 dark:text-red-400 font-semibold' : ''}> · {e.days}d ({BUCKETS[e.bucket]})</span>
+                    )}
+                  </div>
+                </button>
+              ) : (
               <div className="flex-1 min-w-0 pr-2">
                 <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
                   {isBill ? (e.ref === 'Opening' ? 'Opening balance' : 'Bill ' + e.ref) : (e.mode || 'Payment') + (e.ref && e.ref !== e.mode ? ' ' + e.ref : '')}
@@ -99,10 +112,11 @@ export function LedgerTable({ entries = [], onDelete }) {
                   )}
                 </div>
               </div>
+              )}
               <div className="w-20 text-right font-semibold text-slate-800 dark:text-slate-200">{e.debit ? inr(e.debit) : ''}</div>
               <div className="w-20 text-right font-semibold text-brand-700 dark:text-brand-400">{e.credit ? inr(e.credit) : ''}</div>
               <div className="w-24 text-right font-bold text-slate-900 dark:text-slate-100">{inr(e.balance)}</div>
-              {onDelete && <div className="w-7 text-right">{e.type === 'payment' && e.id ? <button onClick={() => onDelete(e)} className="text-red-400 hover:text-red-600 p-1 transition-colors"><Trash2 size={13} /></button> : null}</div>}
+              {onDelete && <div className="w-7 text-right">{e.id ? <button data-testid={'ledger-del-' + (e.ref || e.id)} onClick={() => onDelete(e)} className="text-red-400 hover:text-red-600 p-1 transition-colors"><Trash2 size={13} /></button> : null}</div>}
             </div>
           </div>
         )
