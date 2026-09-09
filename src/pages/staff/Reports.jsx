@@ -278,14 +278,30 @@ function Metric({ label, value, sub, tone = 'text-slate-900' }) {
   return <div className="bg-slate-50 rounded-xl p-2.5"><div className="text-[10px] uppercase tracking-wide text-slate-400">{label}</div><div className={'font-display text-base font-bold ' + tone}>{value}</div><div className="text-[10px] text-slate-400">{sub}</div></div>
 }
 
+function BrandPick({ value, onChange, brands }) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <span className="text-[12px] font-semibold text-slate-500">Brand</span>
+      <select data-testid="brand-filter" value={value} onChange={(e) => onChange(e.target.value)}
+        className="border border-slate-200 rounded-lg px-3 py-2 bg-white text-[13px] font-semibold text-slate-700 outline-none focus:border-emerald-500">
+        <option value="">All brands</option>
+        {(brands || []).map((b) => <option key={b} value={b}>{b}</option>)}
+      </select>
+    </div>
+  )
+}
+
 function ProfitReport({ from, to }) {
   const [r, setR] = useState(null)
-  useEffect(() => { setR(null); api.reportProfit(from, to).then(setR) }, [from, to])
+  const [brand, setBrand] = useState('')
+  const [brands, setBrands] = useState([])
+  useEffect(() => { setR(null); api.reportProfit(from, to, brand).then((x) => { setR(x); if (x.brands) setBrands(x.brands) }) }, [from, to, brand])
   if (!r) return <SkeletonList rows={5} />
   const pct = r.total_sale ? Math.round(r.total_margin / r.total_sale * 100) : 0
   return (
     <>
-      <Big label={`Margin · ${from} to ${to} · ${r.units} unit(s) · ${pct}%`} value={inr(r.total_margin)} />
+      <BrandPick value={brand} onChange={setBrand} brands={brands} />
+      <Big label={`Margin · ${brand || 'All brands'} · ${from} to ${to} · ${r.units} unit(s) · ${pct}%`} value={inr(r.total_margin)} />
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div className="bg-white border border-slate-200 rounded-xl p-3"><div className="text-[10px] uppercase tracking-wide text-slate-400">Sale value</div><div className="font-display text-lg font-bold">{inr(r.total_sale)}</div></div>
         <div className="bg-white border border-slate-200 rounded-xl p-3"><div className="text-[10px] uppercase tracking-wide text-slate-400">Cost</div><div className="font-display text-lg font-bold">{inr(r.total_cost)}</div></div>
@@ -488,17 +504,21 @@ function P2Slider({ label, val, set, min, max, step, unit, hint }) {
 function Profit2({ from, to }) {
   const [r, setR] = useState(null)
   const [brand, setBrand] = useState('HAIER')
+  const [brands, setBrands] = useState([])
   const [scheme, setScheme] = useState(1.5)
   const [opex, setOpex] = useState(2)
   const [coc, setCoc] = useState(12)
   const [payDays, setPayDays] = useState(7)
-  useEffect(() => { setR(null); api.reportProfit2(from, to, brand).then(setR) }, [from, to, brand])
+  useEffect(() => {
+    setR(null)
+    api.reportProfit2(from, to, brand).then((x) => {
+      setR(x)
+      if (x.brands) { setBrands(x.brands); if (brand && !x.brands.includes(brand)) setBrand('') }
+    })
+  }, [from, to, brand])
   if (!r) return <SkeletonList rows={5} />
-  const brandOpts = ['', ...(r.brands || [])]
 
-  const factor = 365 / (r.period_days || 30)
-  const perMonthK = (r.period_days || 30) / 30.4     // scale period totals to a month
-  const toMonth = (v) => v / (r.period_days / 30.4)
+  const toMonth = (v) => v / ((r.period_days || 30) / 30.4)
   const grossM = toMonth(r.gross)
   const revenueM = toMonth(r.revenue)
   const schemeM = revenueM * scheme / 100
@@ -511,20 +531,45 @@ function Profit2({ from, to }) {
   const turns = wc > 0 ? (r.ann_cogs / wc) : 0
   const ccc = r.stock_days + r.recv_days - payDays
   const nmPct = revenueM > 0 ? netM / revenueM * 100 : 0
+  const label = brand || 'All brands'
+
+  const exportMargin = () => exportSheet('gross-margin-' + (brand || 'all').toLowerCase() + '.xlsx', [
+    ['Model', 'Brand', 'Qty', 'Sale', 'Cost', 'Gross margin', 'Margin %'],
+    ...r.rows.map((x) => [x.model, x.brand, x.qty, x.sale, x.cost, x.margin, x.margin_pct]),
+    ['Total', label, r.units, r.revenue, r.cogs, r.gross, r.gross_margin_pct],
+  ], { money: [3, 4, 5], boldRows: [r.rows.length + 1], sheet: 'Gross margin' })
+
+  const exportPnl = () => exportSheet('profit2-' + (brand || 'all').toLowerCase() + '.xlsx', [
+    ['Item', 'Value'],
+    ['Brand', label], ['Period', from + ' to ' + to], ['Units sold', r.units],
+    ['Revenue', r.revenue], ['Cost of goods', r.cogs], ['Gross margin', r.gross], ['Gross margin %', r.gross_margin_pct],
+    ['Stock value on hand', r.stock_value], ['Receivables' + (r.receivables_estimated ? ' (est. share)' : ''), r.receivables],
+    ['Stock days', r.stock_days], ['Dealer credit days', r.recv_days],
+    ['Scheme income %', scheme], ['Operating cost %', opex], ['Cost of capital %', coc], ['Supplier credit days', payDays],
+    ['Gross margin / month', Math.round(grossM)], ['Scheme income / month', Math.round(schemeM)],
+    ['Operating cost / month', -Math.round(opexM)], ['Financing cost / month', -Math.round(finM)],
+    ['Net profit / month', Math.round(netM)], ['Net margin %', +nmPct.toFixed(1)],
+    ['Working capital tied up', Math.round(wc)], ['Cash conversion cycle (days)', Math.round(ccc)], ['Annual return on capital %', Math.round(roce)],
+  ], { sheet: 'Profit 2' })
 
   return (
     <>
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-[12px] font-semibold text-slate-500">Brand</span>
-        <select value={brand} onChange={(e) => setBrand(e.target.value)}
-          className="border border-slate-200 rounded-lg px-3 py-2 bg-white text-[13px] font-semibold text-slate-700 outline-none focus:border-emerald-500">
-          {brandOpts.map((b) => <option key={b} value={b}>{b === '' ? 'All brands' : b}</option>)}
-        </select>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <BrandPick value={brand} onChange={setBrand} brands={brands} />
+        <div className="flex gap-2 mb-3">
+          <ExportBtn onClick={exportMargin} />
+          <button data-testid="p2-export-pnl" onClick={exportPnl} className="text-[12px] font-semibold text-slate-700 bg-slate-100 rounded-full px-3 py-1.5 flex items-center gap-1"><Download size={13} />P&amp;L</button>
+        </div>
       </div>
+      {r.duplicates_ignored > 0 && (
+        <div data-testid="p2-dup-note" className="rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[12px] px-3 py-2 mb-3">
+          {r.duplicates_ignored} re-imported sale line(s) were ignored so revenue isn't double counted.
+        </div>
+      )}
       <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-5 mb-4 flex flex-wrap items-end gap-6">
         <div className="flex-1 min-w-[160px]">
-          <div className={'text-5xl font-extrabold tracking-tight ' + (netM < 0 ? 'text-red-600' : 'text-emerald-700')}>{wc > 0 ? Math.round(roce) + '%' : '—'}</div>
-          <div className="text-[12px] text-slate-500 mt-2 max-w-[240px]">Return on the capital tied up, per year — the number that matters most in distribution.</div>
+          <div data-testid="p2-roce" className={'text-5xl font-extrabold tracking-tight ' + (netM < 0 ? 'text-red-600' : 'text-emerald-700')}>{wc > 0 ? Math.round(roce) + '%' : '—'}</div>
+          <div className="text-[12px] text-slate-500 mt-2 max-w-[240px]">Annual return on the capital tied up in {label}.</div>
         </div>
         <div className="flex gap-6">
           <div><div className="text-xl font-bold">{inr(Math.round(netM))}</div><div className="text-[11px] text-slate-400 mt-0.5">Net profit / month</div></div>
@@ -532,51 +577,83 @@ function Profit2({ from, to }) {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <Metric label="Revenue" value={inr(r.revenue)} sub={r.units + ' units'} />
+        <Metric label="Cost of goods" value={inr(r.cogs)} sub="from purchases" />
+        <Metric label="Gross margin" value={inr(r.gross)} sub={r.gross_margin_pct + '%'} tone={r.gross >= 0 ? 'text-emerald-700' : 'text-red-600'} />
+        <Metric label="Stock on hand" value={inr(r.stock_value)} sub={r.stock_days + ' days'} />
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-5">
-          <div className="text-[12px] font-bold text-slate-500 uppercase tracking-wide mb-3">{brand || 'All brands'} · from your real data · {from} to {to}</div>
+          <div className="text-[12px] font-bold text-slate-500 uppercase tracking-wide mb-3">{label} · real data · {from} to {to}</div>
           <Row2 a="Revenue (sales)" b={inr(r.revenue)} />
           <Row2 a="Cost of goods (from purchases)" b={inr(r.cogs)} />
-          <Row2 a={'Real gross margin · ' + r.gross_margin_pct + '%'} b={inr(r.gross)} bold />
+          <Row2 a={'Gross margin · ' + r.gross_margin_pct + '%'} b={inr(r.gross)} bold />
           <Row2 a="Units sold" b={r.units} />
           <div className="h-2" />
           <Row2 a="Stock value on hand" b={inr(r.stock_value)} />
-          <Row2 a={"Receivables (dealer credit)" + (r.receivables_estimated ? " · est. share" : "")} b={inr(r.receivables)} />
-          <Row2 a="Stock days (real)" b={r.stock_days + ' d'} />
-          <Row2 a="Dealer credit days (real)" b={r.recv_days + ' d'} />
+          <Row2 a={'Receivables (dealer credit)' + (r.receivables_estimated ? ' · est. share' : '')} b={inr(r.receivables)} />
+          <Row2 a="Stock days" b={r.stock_days + ' d'} />
+          <Row2 a="Dealer credit days" b={r.recv_days + ' d'} />
         </div>
 
         <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-5">
           <div className="text-[12px] font-bold text-slate-500 uppercase tracking-wide mb-3">Your assumptions (not in data)</div>
-          <P2Slider label="Scheme / incentive income" val={scheme} set={setScheme} min={0} max={12} step={0.25} unit="%" hint="Extra % from the brand for targets, displays — Haier schemes can exceed 5%." />
+          <P2Slider label="Scheme / incentive income" val={scheme} set={setScheme} min={0} max={12} step={0.25} unit="%" hint="Extra % from the brand for targets, displays." />
           <P2Slider label="Operating cost" val={opex} set={setOpex} min={0} max={6} step={0.25} unit="%" hint="Godown, staff, delivery, damage as % of sales." />
           <P2Slider label="Cost of capital" val={coc} set={setCoc} min={6} max={24} step={0.5} unit="%" hint="Interest on the money you keep locked up." />
-          <P2Slider label="Haier credit days" val={payDays} set={setPayDays} min={0} max={45} step={1} unit=" d" hint="How long you get to pay Haier (not tracked yet)." />
+          <P2Slider label={(brand || 'Supplier') + ' credit days'} val={payDays} set={setPayDays} min={0} max={45} step={1} unit=" d" hint="How long you get to pay the brand." />
         </div>
       </div>
 
       <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-5 mt-4">
-        <div className="text-[15px] font-bold text-slate-800 mb-3">Real monthly P&amp;L</div>
+        <div className="text-[15px] font-bold text-slate-800 mb-3">Monthly P&amp;L</div>
         <Row2 a="Gross margin" b={'+' + inr(Math.round(grossM))} />
         <Row2 a="Scheme income" b={'+' + inr(Math.round(schemeM))} />
         <Row2 a="Operating cost" b={'−' + inr(Math.round(opexM))} />
         <Row2 a="Financing cost (interest on working capital)" b={'−' + inr(Math.round(finM))} />
         <div className="flex justify-between items-baseline pt-3 mt-1 border-t-2 border-slate-800">
           <span className="font-bold text-slate-900">Net profit / month</span>
-          <span className={'text-lg font-extrabold ' + (netM >= 0 ? 'text-emerald-700' : 'text-red-600')}>{inr(Math.round(netM))}</span>
+          <span data-testid="p2-net" className={'text-lg font-extrabold ' + (netM >= 0 ? 'text-emerald-700' : 'text-red-600')}>{inr(Math.round(netM))}</span>
         </div>
         <Row2 a="Net margin on sales" b={nmPct.toFixed(1) + '%'} />
         <Row2 a="Working capital tied up" b={inr(Math.round(wc))} />
         <Row2 a="Cash conversion cycle" b={Math.round(ccc) + ' days'} />
       </div>
 
+      {r.by_month && r.by_month.length > 1 && (
+        <div className="mt-4">
+          <Section title="Gross margin by month">
+            {(() => { const mx = Math.max(1, ...r.by_month.map((m) => Math.abs(m.margin))); return r.by_month.map((m, i) => (
+              <div key={i} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
+                <div className="flex justify-between text-[13px] mb-1"><span className="font-semibold text-slate-700">{m.month}</span><span className={'font-bold ' + (m.margin >= 0 ? 'text-brand-700' : 'text-red-600')}>{inr(m.margin)}</span></div>
+                <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden"><div className={'h-full rounded-full ' + (m.margin >= 0 ? 'bg-brand-500' : 'bg-red-500')} style={{ width: Math.round(Math.abs(m.margin) / mx * 100) + '%' }} /></div>
+                <div className="text-[10px] text-slate-400 mt-1">sale {inr(m.sale)} · cost {inr(m.cost)}</div>
+              </div>
+            )) })()}
+          </Section>
+        </div>
+      )}
+
+      <div className="mt-4">
+        <Section title={'Gross margin by model · ' + r.rows.length + ' models'} action={<ExportBtn onClick={exportMargin} />}>
+          {r.rows.length === 0 ? <Row2 a="No sales in range" b="" /> : r.rows.map((x, i) => (
+            <div key={i} data-testid="p2-model-row" className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
+              <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{x.model}</span><span className={'font-bold shrink-0 ' + (x.margin >= 0 ? 'text-brand-700' : 'text-red-600')}>{inr(x.margin)} <span className="text-[10px] font-semibold text-slate-400">{x.margin_pct}%</span></span></div>
+              <div className="text-[10px] text-slate-400 mt-0.5">{x.brand} · {x.qty} sold · sale {inr(x.sale)} · cost {inr(x.cost)}</div>
+            </div>
+          ))}
+        </Section>
+      </div>
+
       <div className={'rounded-2xl p-4 mt-4 text-[13px] leading-relaxed border ' + (netM < 0 ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-emerald-50 border-emerald-100 text-emerald-900')}>
         <div className="text-[11px] font-bold uppercase tracking-wide mb-1.5">What this says</div>
         {netM < 0
-          ? <>After financing your locked-up capital, you're losing <b>{inr(Math.round(-netM))}/month</b> at these assumptions. Your real gross margin of <b>{r.gross_margin_pct}%</b> plus schemes isn't covering opex and interest. Push margin/scheme up or shrink the {Math.round(ccc)}-day cash cycle.</>
-          : <>Your cash stays locked for <b>{Math.round(ccc)} days</b> each cycle. Real gross margin is <b>{r.gross_margin_pct}%</b>; after schemes, opex and financing you net <b>{inr(Math.round(netM))}/month</b> — a <b>{Math.round(roce)}%</b> annual return on the <b>{inr(Math.round(wc))}</b> you keep tied up. Collecting faster lifts this more than chasing extra margin.</>}
+          ? <>After financing your locked-up capital, you're losing <b>{inr(Math.round(-netM))}/month</b> on {label} at these assumptions. Gross margin of <b>{r.gross_margin_pct}%</b> plus schemes isn't covering opex and interest. Push margin/scheme up or shrink the {Math.round(ccc)}-day cash cycle.</>
+          : <>Your cash stays locked for <b>{Math.round(ccc)} days</b> each cycle. Gross margin is <b>{r.gross_margin_pct}%</b>; after schemes, opex and financing you net <b>{inr(Math.round(netM))}/month</b> — a <b>{Math.round(roce)}%</b> annual return on the <b>{inr(Math.round(wc))}</b> you keep tied up.</>}
       </div>
-      <div className="text-[11px] text-slate-400 mt-3">Revenue, cost and stock are your imported {brand || 'all-brand'} sales &amp; purchases. {r.receivables_estimated ? 'Receivables are an estimated share of total dealer outstanding, split by this brand\u2019s revenue (dealers owe across brands).' : 'Receivables are your total dealer outstanding.'} Scheme, opex, cost-of-capital and Haier credit days are your inputs above.</div>
+      <div className="text-[11px] text-slate-400 mt-3">Revenue, cost and stock are your imported {label} sales &amp; purchases in this date range. {r.receivables_estimated ? 'Receivables are an estimated share of total dealer outstanding, split by this brand\u2019s revenue.' : 'Receivables are your total dealer outstanding.'} Scheme, opex, cost-of-capital and credit days are your inputs above.</div>
     </>
   )
 }
