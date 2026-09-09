@@ -147,6 +147,30 @@ export const addBill = (id, bill) => {
 export const seedDealer = (id, payload) => wait({ ok: true })
 export const bulkBills = (bills) => wait({ ok: true, added: bills.length, unmatched: [] })
 export const parseInvoice = () => wait({ bill_no: 'H00001', date: '2026-09-04', amount: 125628, party: 'KHANNA ENTERPRISES' })
+export const importSalePreview = () => wait({ brand: 'HAIER', bills: [
+  { bill_no: 'H00001', date: '2026-04-09', party: 'KHANNA ENTERPRISES', total: 125628, lines: 8, units: 8, matched: true, dealer: 'KHANNA ENTERPRISES', duplicate: false },
+  { bill_no: 'H00002', date: '2026-04-09', party: 'ANAND SALES MOHALI', total: 33905, lines: 3, units: 3, matched: false, dealer: null, duplicate: false },
+], summary: { total_bills: 2, matched: 1, unmatched: 1, duplicates: 0, matched_total: 125628, total_units: 11, total_lines: 11 } })
+export const importSaleCommit = () => wait({ ok: true, bills_added: 1, skipped_unmatched: 1, skipped_duplicates: 0, units_sold: 11, qty_sold: 0, sales_lines: 11 })
+export const importPurchasePreview = () => wait({ brand: 'HAIER', supplier: 'M/S HAIER APPLIENCES INDIA PVT', summary: { lines: 263, imei_units: 263, qty_only: 0, total: 4210000, duplicates: 0, date_from: '2026-08-30', date_to: '2026-08-30' }, categories: [
+  { group: 'HAIER W/M SEMI', qty: 120, amount: 2100000 }, { group: 'HAIER MICROWAVE', qty: 80, amount: 1120000 }, { group: 'HAIER AIR FRYER', qty: 63, amount: 990000 },
+] })
+export const importPurchaseCommit = () => wait({ ok: true, units_added: 263, qty_added: 0, duplicates: 0, purchase_lines: 263 })
+export const catalogUnits = () => wait([
+  { imei: 'CAACKL0000104S8DTBQ2', brand: 'HAIER', group: 'HAIER W/M SEMI', model: 'HAIER SEMI W/M- HTW80-196BR:NOIDA', status: 'in_stock', purchase_bill: '5056153425', purchase_date: '2026-08-30' },
+  { imei: 'FZ03WUM0300GZS2F0257', brand: 'HAIER', group: 'HAIER MICROWAVE', model: 'HAIER M/W- HIL2801DBSJ:MWO', status: 'sold', sale_bill: 'H00002', sale_dealer_name: 'ANAND SALES MOHALI', sale_date: '2026-04-09' },
+])
+export const imeiLookup = (imei) => wait({ imei: (imei || '').trim() || 'FZ03WUM0300GZS2F0257', brand: 'HAIER', group: 'HAIER MICROWAVE', model: 'HAIER M/W- HIL2801DBSJ:MWO', status: 'sold', purchase_bill: '5056153422', purchase_date: '2026-08-30', supplier: 'M/S HAIER APPLIENCES INDIA PVT', sale_bill: 'H00002', sale_dealer_name: 'ANAND SALES MOHALI', sale_date: '2026-04-09', sale_rate: 14209 })
+export const reportSales = (from, to) => wait({ from, to, total: 159533, units: 11, count: 11, rows: [
+  { date: '2026-04-09', bill_no: 'H00001', dealer: 'KHANNA ENTERPRISES', brand: 'HAIER', group: 'HAIER LED', model: 'HAIER LED- 32" LE32A7-N:HIL', imei: 'td005069009vgs8kxdxx', qty: 1, rate: 14209, amount: 14209 },
+  { date: '2026-04-09', bill_no: 'H00002', dealer: 'ANAND SALES MOHALI', brand: 'HAIER', group: 'HAIER MICROWAVE', model: 'HAIER M/W- HIL2801DBSJ:MWO', imei: 'FZ03WUM0300GZS2F0257', qty: 1, rate: 11302, amount: 11302 },
+], by_dealer: [{ dealer: 'KHANNA ENTERPRISES', amount: 125628, qty: 8 }, { dealer: 'ANAND SALES MOHALI', amount: 33905, qty: 3 }] })
+export const reportPurchasesBrand = (from, to) => wait({ from, to, total: 4210000, by_brand: [{ brand: 'HAIER', amount: 4210000, qty: 263 }], by_month: [{ month: '2026-08', amount: 4210000, qty: 263 }], by_category: [{ group: 'HAIER W/M SEMI', amount: 2100000, qty: 120 }, { group: 'HAIER MICROWAVE', amount: 1120000, qty: 80 }, { group: 'HAIER AIR FRYER', amount: 990000, qty: 63 }] })
+export const stockSummary = () => wait({ brands: ['HAIER'], rows: [
+  { model: 'HAIER SEMI W/M- HTW80-196BR:NOIDA', brand: 'HAIER', group: 'HAIER W/M SEMI', total: 12, available: 9, tracked: 'imei' },
+  { model: 'HAIER M/W- HIL2801DBSJ:MWO', brand: 'HAIER', group: 'HAIER MICROWAVE', total: 8, available: 5, tracked: 'imei' },
+  { model: 'HAIER LED- H43S80GFX', brand: 'HAIER', group: 'HAIER LED', total: 6, available: 2, tracked: 'imei' },
+] })
 
 export const pendingPayments = () => wait([])
 export const approvePayment = () => wait({ ok: true })

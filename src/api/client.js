@@ -72,6 +72,8 @@ export const api = {
   reportSalesVsColl: (from, to) => USE_MOCK ? mock.reportSalesVsColl() : http('/reports/sales-vs-collection?from=' + from + '&to=' + to),
   reportBillAgeing: () => USE_MOCK ? mock.reportBillAgeing() : http('/reports/bill-ageing'),
   reportBills: (from, to, source) => USE_MOCK ? mock.reportBills(from, to, source) : http('/reports/bills?from=' + from + '&to=' + to + (source ? '&source=' + source : '')),
+  reportSales: (from, to, q = '') => USE_MOCK ? mock.reportSales(from, to, q) : http('/reports/sales?from=' + from + '&to=' + to + (q ? '&q=' + encodeURIComponent(q) : '')),
+  reportPurchasesBrand: (from, to, brand = '') => USE_MOCK ? mock.reportPurchasesBrand(from, to, brand) : http('/reports/purchases-brand?from=' + from + '&to=' + to + (brand ? '&brand=' + encodeURIComponent(brand) : '')),
   backup: () => USE_MOCK ? mock.backup() : http('/backup'),
   addBill: (id, bill) => USE_MOCK ? mock.addBill(id, bill) : http('/dealers/' + id + '/bills', { method: 'POST', body: bill }),
   seedDealer: (id, payload) => USE_MOCK ? mock.seedDealer(id, payload) : http('/dealers/' + id + '/seed', { method: 'POST', body: payload }),
@@ -88,6 +90,13 @@ export const api = {
   saveStock: (s) => USE_MOCK ? mock.save('stock', s)
     : http(s.id ? '/stock/' + s.id : '/stock', { method: s.id ? 'PATCH' : 'POST', body: s }),
   delStock: (id) => USE_MOCK ? mock.del('stock', id) : http('/stock/' + id, { method: 'DELETE' }),
+  importSalePreview: (file) => { if (USE_MOCK) return mock.importSalePreview(file); const fd = new FormData(); fd.append('file', file); return httpForm('/import/sale/preview', fd) },
+  importSaleCommit: (file) => { if (USE_MOCK) return mock.importSaleCommit(file); const fd = new FormData(); fd.append('file', file); return httpForm('/import/sale/commit', fd) },
+  importPurchasePreview: (file) => { if (USE_MOCK) return mock.importPurchasePreview(file); const fd = new FormData(); fd.append('file', file); return httpForm('/import/purchase/preview', fd) },
+  importPurchaseCommit: (file) => { if (USE_MOCK) return mock.importPurchaseCommit(file); const fd = new FormData(); fd.append('file', file); return httpForm('/import/purchase/commit', fd) },
+  catalogUnits: (params = '') => USE_MOCK ? mock.catalogUnits(params) : http('/catalog/units' + params),
+  imeiLookup: (imei) => USE_MOCK ? mock.imeiLookup(imei) : http('/catalog/imei/' + encodeURIComponent(imei)),
+  stockSummary: () => USE_MOCK ? mock.stockSummary() : http('/catalog/stock-summary'),
 
   users: () => USE_MOCK ? mock.list('users') : http('/users'),
   saveUser: (u) => USE_MOCK ? mock.save('users', u)

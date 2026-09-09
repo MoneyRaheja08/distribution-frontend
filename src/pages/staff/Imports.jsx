@@ -1,0 +1,190 @@
+import { useState } from 'react'
+import { UploadCloud, ShoppingCart, PackagePlus, CheckCircle2, AlertTriangle, Loader2, FileSpreadsheet } from 'lucide-react'
+import { api } from '../../api/client.js'
+import { toast } from '../../lib/toast.js'
+import { inr } from '../../lib/format.js'
+import { Modal } from '../../components/ui.jsx'
+
+export default function Imports() {
+  return (
+    <>
+      <h1 className="font-display text-2xl font-bold tracking-tight mb-1">Imports</h1>
+      <p className="text-[13px] text-slate-500 mb-6 max-w-xl">Import MARG <b>Sale</b> &amp; <b>Purchase</b> CSVs. The brand is read from the file, so any brand works — with or without IMEI/serial numbers.</p>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SaleImport />
+        <PurchaseImport />
+      </div>
+    </>
+  )
+}
+
+function Dropzone({ testid, onFile, busy, icon: Icon, title, hint }) {
+  const pick = (e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = '' }
+  return (
+    <label className="group flex flex-col items-center justify-center text-center border-2 border-dashed border-slate-200 hover:border-brand-400 rounded-2xl py-8 px-4 cursor-pointer bg-slate-50/60 hover:bg-brand-50/40 transition-colors">
+      <input data-testid={testid} type="file" accept=".csv,text/csv" onChange={pick} className="hidden" disabled={busy} />
+      <div className="w-12 h-12 rounded-2xl bg-brand-50 ring-1 ring-brand-100 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+        {busy ? <Loader2 size={22} className="text-brand-600 animate-spin" /> : <Icon size={22} className="text-brand-600" />}
+      </div>
+      <div className="font-display text-[14px] font-bold text-slate-700">{title}</div>
+      <div className="text-[12px] text-slate-400 mt-0.5">{hint}</div>
+    </label>
+  )
+}
+
+function Card({ icon: Icon, tone, title, subtitle, children }) {
+  return (
+    <div className="bg-white border border-slate-200/70 rounded-2xl p-4 shadow-soft">
+      <div className="flex items-center gap-3 mb-4">
+        <div className={'w-10 h-10 rounded-xl flex items-center justify-center ' + tone}><Icon size={19} /></div>
+        <div><div className="font-display text-[15px] font-bold text-slate-900">{title}</div><div className="text-[12px] text-slate-400">{subtitle}</div></div>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function Stat({ label, value, tone = 'text-slate-900' }) {
+  return <div className="bg-slate-50 rounded-xl px-3 py-2"><div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</div><div className={'font-display text-lg font-bold ' + tone}>{value}</div></div>
+}
+
+function ResultBox({ lines, onReset }) {
+  return (
+    <div className="border border-brand-100 bg-brand-50/60 rounded-2xl p-4 text-center">
+      <CheckCircle2 size={28} className="text-brand-600 mx-auto mb-2" />
+      <div className="font-display font-bold text-slate-800 mb-2">Import complete</div>
+      <div className="space-y-1 text-[13px] text-slate-600">{lines.map((l, i) => <div key={i}>{l}</div>)}</div>
+      <button onClick={onReset} className="mt-4 text-[12px] font-semibold text-brand-700 hover:underline">Import another file</button>
+    </div>
+  )
+}
+
+function SaleImport() {
+  const [busy, setBusy] = useState(false)
+  const [pv, setPv] = useState(null)
+  const [file, setFile] = useState(null)
+  const [done, setDone] = useState(null)
+  const onFile = async (f) => {
+    setFile(f); setBusy(true); setDone(null)
+    try { setPv(await api.importSalePreview(f)) } catch (e) { toast.error(e.message) }
+    setBusy(false)
+  }
+  const commit = async () => {
+    setBusy(true)
+    try { const r = await api.importSaleCommit(file); setDone(r); setPv(null); toast.success('Sale imported to ledger') }
+    catch (e) { toast.error(e.message) }
+    setBusy(false)
+  }
+  return (
+    <Card icon={ShoppingCart} tone="bg-brand-600 text-white" title="Sale CSV" subtitle="Auto-feeds matched dealer ledgers + marks stock sold">
+      {done ? (
+        <ResultBox onReset={() => setDone(null)} lines={[
+          `${done.bills_added} bill(s) posted to ledgers`,
+          `${done.skipped_unmatched} skipped (dealer not in ledger) · ${done.skipped_duplicates} duplicate(s)`,
+          `${done.units_sold} unit(s) marked sold${done.qty_sold ? ` · ${done.qty_sold} qty` : ''}`,
+        ]} />
+      ) : (
+        <Dropzone testid="sale-file-input" onFile={onFile} busy={busy} icon={UploadCloud} title="Choose Sale CSV" hint="e.g. SALE HAIER.csv" />
+      )}
+      {pv && <SalePreview pv={pv} busy={busy} onClose={() => setPv(null)} onConfirm={commit} />}
+    </Card>
+  )
+}
+
+function SalePreview({ pv, busy, onClose, onConfirm }) {
+  const s = pv.summary
+  return (
+    <Modal title={`Review sale import${pv.brand ? ' · ' + pv.brand : ''}`} onClose={onClose}>
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        <Stat label="Will post" value={s.matched} tone="text-brand-700" />
+        <Stat label="Unmatched" value={s.unmatched} tone="text-amber-700" />
+        <Stat label="Duplicates" value={s.duplicates} tone="text-slate-500" />
+      </div>
+      <div className="text-[12px] text-slate-500 mb-2">Ledger total to post: <b className="text-slate-800">{inr(s.matched_total)}</b> · {s.total_units} unit(s)</div>
+      <div className="max-h-64 overflow-y-auto border border-slate-100 rounded-xl divide-y divide-slate-50">
+        {pv.bills.map((b) => (
+          <div key={b.bill_no} data-testid={'sale-bill-' + b.bill_no} className="flex items-center justify-between px-3 py-2 text-[13px]">
+            <div className="min-w-0 pr-2">
+              <div className="font-semibold text-slate-800 truncate">{b.party}</div>
+              <div className="text-[11px] text-slate-400">Bill {b.bill_no} · {b.date} · {b.lines} line(s)</div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="font-bold text-slate-900">{inr(b.total)}</span>
+              {b.duplicate ? <Badge tone="slate">Duplicate</Badge> : b.matched ? <Badge tone="brand">Post</Badge> : <Badge tone="amber">Skip</Badge>}
+            </div>
+          </div>
+        ))}
+      </div>
+      {s.unmatched > 0 && <div className="flex items-start gap-2 mt-3 text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2"><AlertTriangle size={15} className="mt-0.5 shrink-0" /><span>Unmatched dealers are <b>not</b> auto-created — add them to your ledger first, then re-import to post those bills.</span></div>}
+      <button data-testid="sale-confirm-btn" onClick={onConfirm} disabled={busy || s.matched === 0}
+        className="w-full mt-4 bg-gradient-to-b from-brand-500 to-brand-700 hover:from-brand-400 hover:to-brand-600 disabled:opacity-50 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 shadow-glow transition-all">
+        {busy ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}Post {s.matched} bill(s) &amp; mark stock sold
+      </button>
+    </Modal>
+  )
+}
+
+function PurchaseImport() {
+  const [busy, setBusy] = useState(false)
+  const [pv, setPv] = useState(null)
+  const [file, setFile] = useState(null)
+  const [done, setDone] = useState(null)
+  const onFile = async (f) => {
+    setFile(f); setBusy(true); setDone(null)
+    try { setPv(await api.importPurchasePreview(f)) } catch (e) { toast.error(e.message) }
+    setBusy(false)
+  }
+  const commit = async () => {
+    setBusy(true)
+    try { const r = await api.importPurchaseCommit(file); setDone(r); setPv(null); toast.success('Purchase added to stock') }
+    catch (e) { toast.error(e.message) }
+    setBusy(false)
+  }
+  return (
+    <Card icon={PackagePlus} tone="bg-slate-900 text-white" title="Purchase CSV" subtitle="Adds units to stock (by IMEI) for inventory & reports">
+      {done ? (
+        <ResultBox onReset={() => setDone(null)} lines={[
+          `${done.units_added} IMEI unit(s) added to stock`,
+          done.qty_added ? `${done.qty_added} qty added (non-IMEI models)` : null,
+          `${done.duplicates} duplicate IMEI(s) skipped`,
+        ].filter(Boolean)} />
+      ) : (
+        <Dropzone testid="purchase-file-input" onFile={onFile} busy={busy} icon={FileSpreadsheet} title="Choose Purchase CSV" hint="e.g. PURCHASE HAIER.csv" />
+      )}
+      {pv && <PurchasePreview pv={pv} busy={busy} onClose={() => setPv(null)} onConfirm={commit} />}
+    </Card>
+  )
+}
+
+function PurchasePreview({ pv, busy, onClose, onConfirm }) {
+  const s = pv.summary
+  return (
+    <Modal title={`Review purchase${pv.brand ? ' · ' + pv.brand : ''}`} onClose={onClose}>
+      <div className="text-[12px] text-slate-500 mb-3">From <b className="text-slate-700">{pv.supplier || '—'}</b>{s.date_from ? ` · ${s.date_from} → ${s.date_to}` : ''}</div>
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        <Stat label="IMEI units" value={s.imei_units} tone="text-brand-700" />
+        <Stat label="Qty-only" value={s.qty_only} />
+        <Stat label="Duplicates" value={s.duplicates} tone="text-slate-500" />
+      </div>
+      <div className="bg-slate-50 rounded-xl px-3 py-2 mb-3"><div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Purchase value</div><div className="font-display text-xl font-bold text-slate-900">{inr(s.total)}</div></div>
+      <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">By category</div>
+      <div className="max-h-52 overflow-y-auto border border-slate-100 rounded-xl divide-y divide-slate-50">
+        {(pv.categories || []).map((c, i) => (
+          <div key={i} className="flex items-center justify-between px-3 py-2 text-[13px]">
+            <div className="font-semibold text-slate-700 truncate pr-2">{c.group} <span className="text-slate-400 font-normal">· {c.qty}</span></div>
+            <span className="font-bold text-slate-900 shrink-0">{inr(c.amount)}</span>
+          </div>
+        ))}
+      </div>
+      <button data-testid="purchase-confirm-btn" onClick={onConfirm} disabled={busy || (s.imei_units === 0 && s.qty_only === 0)}
+        className="w-full mt-4 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors">
+        {busy ? <Loader2 size={16} className="animate-spin" /> : <PackagePlus size={16} />}Add {s.imei_units || s.qty_only} to stock
+      </button>
+    </Modal>
+  )
+}
+
+function Badge({ tone, children }) {
+  const map = { brand: 'text-brand-700 bg-brand-50 ring-brand-100', amber: 'text-amber-700 bg-amber-50 ring-amber-100', slate: 'text-slate-500 bg-slate-100 ring-slate-200' }
+  return <span className={'text-[10px] font-bold px-2 py-0.5 rounded-full ring-1 ' + map[tone]}>{children}</span>
+}

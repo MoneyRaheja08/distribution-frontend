@@ -25,7 +25,7 @@ export default function Reports() {
       <div className="text-xs font-bold text-slate-600 mb-2.5 px-0.5">Reports</div>
 
       <div className="flex gap-1.5 mb-3 overflow-x-auto">
-        {[['collections', 'Collections'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['billspdf', 'PDF bills'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']].map(([k, l]) => (
+        {[['collections', 'Collections'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['billspdf', 'PDF bills'], ['sales', 'Dealer × Model'], ['purchases', 'Brand buys'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']].map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
             className={'whitespace-nowrap text-[13px] font-semibold px-3.5 py-2 rounded-lg border ' +
               (tab === k ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500')}>{l}</button>
@@ -46,6 +46,8 @@ export default function Reports() {
       {tab === 'activity' && <Activity from={from} to={to} />}
       {tab === 'billage' && <BillAgeing />}
       {tab === 'billspdf' && <PdfBills from={from} to={to} />}
+      {tab === 'sales' && <SalesReport from={from} to={to} />}
+      {tab === 'purchases' && <PurchaseBrandReport from={from} to={to} />}
       {tab === 'svc' && <SalesVsColl from={from} to={to} />}
     </>
   )
@@ -207,6 +209,62 @@ function Activity({ from, to }) {
             <div className="text-[11px] text-slate-500 mt-0.5">{x.receipts} receipts · {x.visits} visits · {x.dealers_visited} dealers</div>
           </div>
         ))}
+      </Section>
+    </>
+  )
+}
+
+function SalesReport({ from, to }) {
+  const [r, setR] = useState(null)
+  const [q, setQ] = useState('')
+  const run = () => { setR(null); api.reportSales(from, to, q).then(setR) }
+  useEffect(() => { setR(null); api.reportSales(from, to, q).then(setR) }, [from, to]) // eslint-disable-line
+  if (!r) return <SkeletonList rows={5} />
+  return (
+    <>
+      <Big label={`Sales · ${from} to ${to} · ${r.count} line(s) · ${r.units} IMEI`} value={inr(r.total)} />
+      <FilterBar>
+        <Search value={q} onChange={setQ} placeholder="Dealer, model or IMEI…" />
+        <button onClick={run} className="text-[12px] font-semibold text-brand-700 bg-brand-50 rounded-full px-3 py-1.5">Search</button>
+      </FilterBar>
+      <Section title="By dealer" action={<ExportBtn onClick={() => exportSheet('sales.xlsx', [['Date', 'Bill', 'Dealer', 'Brand', 'Model', 'IMEI', 'Qty', 'Amount'], ...r.rows.map((x) => [x.date, x.bill_no, x.dealer, x.brand, x.model, x.imei, x.qty, x.amount])], { money: [7], sheet: 'Sales' })} />}>
+        {r.by_dealer.length === 0 ? <Row2 a="No sales in range" b="" /> : r.by_dealer.map((d, i) => <Row2 key={i} a={`${d.dealer} · ${d.qty}`} b={inr(d.amount)} bold />)}
+      </Section>
+      <Section title="Lines · dealer × model × IMEI">
+        {r.rows.length === 0 ? <Row2 a="—" b="" /> : r.rows.slice(0, 300).map((x, i) => (
+          <div key={i} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
+            <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{x.dealer}</span><span className="font-bold text-slate-900 shrink-0">{inr(x.amount)}</span></div>
+            <div className="text-[11px] text-slate-500 mt-0.5 truncate">{x.model}{x.imei ? ` · ${x.imei}` : ''}</div>
+            <div className="text-[10px] text-slate-400">Bill {x.bill_no} · {x.date}{x.brand ? ` · ${x.brand}` : ''}</div>
+          </div>
+        ))}
+      </Section>
+    </>
+  )
+}
+
+function PurchaseBrandReport({ from, to }) {
+  const [r, setR] = useState(null)
+  const [brand, setBrand] = useState('')
+  useEffect(() => { setR(null); api.reportPurchasesBrand(from, to, brand).then(setR) }, [from, to, brand])
+  if (!r) return <SkeletonList rows={5} />
+  return (
+    <>
+      <Big label={`Purchases · ${from} to ${to}${brand ? ' · ' + brand : ''}`} value={inr(r.total)} />
+      <FilterBar>
+        <select value={brand} onChange={(e) => setBrand(e.target.value)} className="border border-slate-200 rounded-lg px-2 py-2 text-[13px] bg-white">
+          <option value="">All brands</option>
+          {r.by_brand.map((b) => <option key={b.brand} value={b.brand}>{b.brand}</option>)}
+        </select>
+      </FilterBar>
+      <Section title="By brand" action={<ExportBtn onClick={() => exportSheet('purchases-brand.xlsx', [['Brand', 'Qty', 'Amount'], ...r.by_brand.map((x) => [x.brand, x.qty, x.amount])], { money: [2], sheet: 'Brand' })} />}>
+        {r.by_brand.length === 0 ? <Row2 a="No purchases in range" b="" /> : r.by_brand.map((b, i) => <Row2 key={i} a={`${b.brand} · ${b.qty}`} b={inr(b.amount)} bold />)}
+      </Section>
+      <Section title="By month">
+        {r.by_month.length === 0 ? <Row2 a="—" b="" /> : r.by_month.map((m, i) => <Row2 key={i} a={m.month} b={inr(m.amount)} />)}
+      </Section>
+      <Section title="By category">
+        {r.by_category.length === 0 ? <Row2 a="—" b="" /> : r.by_category.map((c, i) => <Row2 key={i} a={`${c.group} · ${c.qty}`} b={inr(c.amount)} />)}
       </Section>
     </>
   )

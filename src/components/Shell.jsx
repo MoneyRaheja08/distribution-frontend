@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { LogOut, LayoutDashboard, Store, Package, Tag, Wallet, ClipboardList, BarChart3, ClipboardCheck, FileBarChart, Users, ShoppingCart, Moon, Sun } from 'lucide-react'
+import { LogOut, LayoutDashboard, Store, Package, Tag, Wallet, ClipboardList, BarChart3, ClipboardCheck, FileBarChart, Users, ShoppingCart, Moon, Sun, UploadCloud } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
@@ -36,6 +36,7 @@ export default function Shell() {
   if (role === 'admin') tabs.push(['/reconcile', 'Reconcile', ClipboardCheck])
   if (role === 'admin' || auth.user.can_view_reports) tabs.push(['/reports', 'Reports', FileBarChart])
   if (role === 'admin') tabs.push(['/users', 'Users', Users])
+  if (role !== 'collector') tabs.push(['/imports', 'Imports', UploadCloud])
   const subtitle = role === 'collector' ? 'Collector' : role === 'admin' ? 'Admin' : 'Manager'
   const onLogout = () => { logout(); nav('/') }
 
