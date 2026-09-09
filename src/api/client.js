@@ -74,6 +74,8 @@ export const api = {
   reportBills: (from, to, source) => USE_MOCK ? mock.reportBills(from, to, source) : http('/reports/bills?from=' + from + '&to=' + to + (source ? '&source=' + source : '')),
   reportSales: (from, to, q = '') => USE_MOCK ? mock.reportSales(from, to, q) : http('/reports/sales?from=' + from + '&to=' + to + (q ? '&q=' + encodeURIComponent(q) : '')),
   reportPurchasesBrand: (from, to, brand = '') => USE_MOCK ? mock.reportPurchasesBrand(from, to, brand) : http('/reports/purchases-brand?from=' + from + '&to=' + to + (brand ? '&brand=' + encodeURIComponent(brand) : '')),
+  reportProfit: (from, to, brand = '') => USE_MOCK ? mock.reportProfit(from, to, brand) : http('/reports/profit?from=' + from + '&to=' + to + (brand ? '&brand=' + encodeURIComponent(brand) : '')),
+  agingStock: (days = 60) => USE_MOCK ? mock.agingStock(days) : http('/catalog/aging-stock?days=' + days),
   backup: () => USE_MOCK ? mock.backup() : http('/backup'),
   addBill: (id, bill) => USE_MOCK ? mock.addBill(id, bill) : http('/dealers/' + id + '/bills', { method: 'POST', body: bill }),
   seedDealer: (id, payload) => USE_MOCK ? mock.seedDealer(id, payload) : http('/dealers/' + id + '/seed', { method: 'POST', body: payload }),

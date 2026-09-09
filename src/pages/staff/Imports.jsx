@@ -116,6 +116,7 @@ function SalePreview({ pv, busy, onClose, onConfirm }) {
         ))}
       </div>
       {s.unmatched > 0 && <div className="flex items-start gap-2 mt-3 text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2"><AlertTriangle size={15} className="mt-0.5 shrink-0" /><span>Unmatched dealers are <b>not</b> auto-created — add them to your ledger first, then re-import to post those bills.</span></div>}
+      {s.unknown_serials > 0 && <div className="flex items-start gap-2 mt-2 text-[12px] text-orange-800 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2"><AlertTriangle size={15} className="mt-0.5 shrink-0" /><span><b>{s.unknown_serials}</b> IMEI(s) here were never purchased/stocked{s.unknown_sample?.length ? ` (e.g. ${s.unknown_sample.slice(0, 3).join(', ')})` : ''}. They'll still be recorded as sold — verify these serials.</span></div>}
       <button data-testid="sale-confirm-btn" onClick={onConfirm} disabled={busy || s.matched === 0}
         className="w-full mt-4 bg-gradient-to-b from-brand-500 to-brand-700 hover:from-brand-400 hover:to-brand-600 disabled:opacity-50 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 shadow-glow transition-all">
         {busy ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}Post {s.matched} bill(s) &amp; mark stock sold

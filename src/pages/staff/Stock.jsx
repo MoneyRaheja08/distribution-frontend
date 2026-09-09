@@ -14,6 +14,8 @@ export default function Stock() {
   const [lookup, setLookup] = useState(null)
   const [uf, setUf] = useState({ brand: '', status: '', q: '' })
   const [units, setUnits] = useState(null)
+  const [agingDays, setAgingDays] = useState(60)
+  const [aging, setAging] = useState(null)
   useEffect(() => {
     const p = new URLSearchParams()
     if (uf.brand) p.set('brand', uf.brand)
@@ -22,6 +24,7 @@ export default function Stock() {
     const qs = p.toString()
     api.catalogUnits(qs ? '?' + qs : '').then(setUnits)
   }, [uf])
+  useEffect(() => { api.agingStock(agingDays).then(setAging) }, [agingDays])
   const reload = () => { api.stock().then(setData); api.stockSummary().then(setSummary) }
   useEffect(() => { reload() }, [])
   if (!data || !summary) return <Spin />
@@ -57,6 +60,45 @@ export default function Stock() {
             {lookup.result && <ImeiCard u={lookup.result} />}
           </div>
         )}
+      </div>
+
+      {(summary.valuation && summary.valuation.length > 0) && (
+        <div className="mb-5">
+          <div className="flex items-center justify-between mb-2.5 px-0.5">
+            <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">Stock value · available</div>
+            <div className="text-[13px] font-bold text-brand-700">{inr(summary.total_value || 0)}</div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+            {summary.valuation.map((v, i) => (
+              <div key={i} className="bg-white border border-slate-200/70 rounded-2xl p-3.5 shadow-soft">
+                <div className="text-[12px] font-semibold text-slate-500 truncate">{v.brand}</div>
+                <div className="font-display text-lg font-bold text-slate-900 mt-0.5">{inr(v.value)}</div>
+                <div className="text-[11px] text-slate-400">{v.units} unit(s) in stock</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Slow / dead stock */}
+      <div className="flex items-center justify-between mb-2.5 px-0.5">
+        <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">Slow-moving stock</div>
+        <select data-testid="aging-days" value={agingDays} onChange={(e) => setAgingDays(+e.target.value)} className="border border-slate-200 rounded-lg px-2 py-1 text-[12px] bg-white">
+          <option value={30}>&gt; 30 days</option><option value={60}>&gt; 60 days</option><option value={90}>&gt; 90 days</option>
+        </select>
+      </div>
+      <div className="bg-white border border-slate-200/70 rounded-2xl shadow-soft mb-5 overflow-hidden">
+        {!aging ? <div className="text-slate-400 text-[13px] py-4 text-center">Loading…</div>
+          : aging.rows.length === 0 ? <div className="text-slate-400 text-[13px] py-6 text-center">Nothing sitting beyond {aging.days} days 🎉</div>
+            : <>
+              <div className="flex justify-between items-center px-3.5 py-2 bg-amber-50/60 border-b border-amber-100 text-[12px]"><span className="font-semibold text-amber-800">{aging.count} unit(s) aging</span><span className="font-bold text-amber-800">{inr(aging.value)} tied up</span></div>
+              {aging.rows.map((u, i) => (
+                <div key={i} className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-50 last:border-0 text-[13px]">
+                  <div className="min-w-0 pr-2"><div className="font-semibold text-slate-800 truncate">{u.model}</div><div className="text-[11px] text-slate-400 font-mono truncate">{u.imei} · {u.brand}</div></div>
+                  <div className="text-right shrink-0"><div className="font-bold text-amber-700">{u.days}d</div><div className="text-[10px] text-slate-400">{u.purchase_date}</div></div>
+                </div>
+              ))}
+            </>}
       </div>
 
       {/* All units deep search */}
