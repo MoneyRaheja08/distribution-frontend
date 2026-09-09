@@ -5,6 +5,51 @@ import { toast } from '../../lib/toast.js'
 import { inr } from '../../lib/format.js'
 import { Modal } from '../../components/ui.jsx'
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+function parseRaw(raw, fmt) {
+  if (!raw) return null
+  const p = String(raw).replace(/\//g, '-').split('-')
+  if (p.length !== 3) return null
+  let [a, b, c] = p, dd, mm, yy
+  if (a.length === 4) { yy = a; mm = b; dd = c }
+  else if (fmt === 'mdy') { mm = a; dd = b; yy = c }
+  else { dd = a; mm = b; yy = c }
+  yy = yy.length === 2 ? '20' + yy : yy
+  return { y: parseInt(yy, 10), m: parseInt(mm, 10), d: parseInt(dd, 10) }
+}
+function fmtRaw(raw, fmt) {
+  const o = parseRaw(raw, fmt)
+  if (!o || !o.m || o.m < 1 || o.m > 12) return raw || '—'
+  return `${o.d} ${MONTHS[o.m - 1]} ${o.y}`
+}
+function toISO(raw, fmt) {
+  const o = parseRaw(raw, fmt)
+  if (!o || !o.m) return null
+  return `${o.y}-${String(o.m).padStart(2, '0')}-${String(o.d).padStart(2, '0')}`
+}
+function rawRange(raws, fmt) {
+  const arr = raws.map((r) => ({ r, iso: toISO(r, fmt) })).filter((x) => x.iso).sort((a, b) => (a.iso < b.iso ? -1 : 1))
+  return arr.length ? [arr[0].r, arr[arr.length - 1].r] : []
+}
+function DateFormatBar({ dateInfo, fmt, setFmt }) {
+  if (!dateInfo) return null
+  const sample = dateInfo.sample
+  return (
+    <div className={'mb-3 rounded-xl px-3 py-2.5 border text-[12px] ' + (dateInfo.ambiguous ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200')}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="font-semibold text-slate-700">Confirm bill-date format</div>
+        <select data-testid="date-format-select" value={fmt} onChange={(e) => setFmt(e.target.value)}
+          className="text-[12px] font-semibold border border-slate-300 rounded-lg px-2 py-1 bg-white">
+          <option value="dmy">DD-MM-YYYY</option>
+          <option value="mdy">MM-DD-YYYY</option>
+        </select>
+      </div>
+      <div className="mt-1 text-slate-500">Reading <b className="text-slate-700">{sample || '—'}</b> as <b data-testid="date-format-preview" className="text-slate-800">{fmtRaw(sample, fmt)}</b></div>
+      {dateInfo.ambiguous && <div className="mt-1 flex items-center gap-1.5 text-amber-800 font-semibold"><AlertTriangle size={13} /> Dates are ambiguous — please pick the correct format before posting.</div>}
+    </div>
+  )
+}
+
 export default function Imports() {
   return (
     <>
@@ -74,14 +119,15 @@ function SaleImport() {
   const [file, setFile] = useState(null)
   const [done, setDone] = useState(null)
   const [err, setErr] = useState(null)
+  const [dfmt, setDfmt] = useState('dmy')
   const onFile = async (f) => {
     setFile(f); setBusy(true); setDone(null); setErr(null)
-    try { setPv(await api.importSalePreview(f)) } catch (e) { setErr(e.message); toast.error(e.message) }
+    try { const p = await api.importSalePreview(f); setDfmt(p.date_info?.detected === 'mdy' ? 'mdy' : 'dmy'); setPv(p) } catch (e) { setErr(e.message); toast.error(e.message) }
     setBusy(false)
   }
   const commit = async () => {
     setBusy(true); setErr(null)
-    try { const r = await api.importSaleCommit(file); setDone(r); setPv(null); toast.success('Sale imported to ledger') }
+    try { const r = await api.importSaleCommit(file, dfmt); setDone(r); setPv(null); toast.success('Sale imported to ledger') }
     catch (e) { setErr(e.message); toast.error(e.message) }
     setBusy(false)
   }
@@ -97,15 +143,16 @@ function SaleImport() {
         <Dropzone testid="sale-file-input" onFile={onFile} busy={busy} icon={UploadCloud} title="Choose Sale CSV" hint="e.g. SALE HAIER.csv" />
       )}
       {err && <ErrBox msg={err} onRetry={() => setErr(null)} />}
-      {pv && <SalePreview pv={pv} busy={busy} onClose={() => setPv(null)} onConfirm={commit} />}
+      {pv && <SalePreview pv={pv} busy={busy} fmt={dfmt} setFmt={setDfmt} onClose={() => setPv(null)} onConfirm={commit} />}
     </Card>
   )
 }
 
-function SalePreview({ pv, busy, onClose, onConfirm }) {
+function SalePreview({ pv, busy, fmt, setFmt, onClose, onConfirm }) {
   const s = pv.summary
   return (
     <Modal title={`Review sale import${pv.brand ? ' · ' + pv.brand : ''}`} onClose={onClose}>
+      <DateFormatBar dateInfo={pv.date_info} fmt={fmt} setFmt={setFmt} />
       <div className="grid grid-cols-3 gap-2 mb-3">
         <Stat label="Will post" value={s.matched} tone="text-brand-700" />
         <Stat label="Unmatched" value={s.unmatched} tone="text-amber-700" />
@@ -117,7 +164,7 @@ function SalePreview({ pv, busy, onClose, onConfirm }) {
           <div key={b.bill_no} data-testid={'sale-bill-' + b.bill_no} className="flex items-center justify-between px-3 py-2 text-[13px]">
             <div className="min-w-0 pr-2">
               <div className="font-semibold text-slate-800 truncate">{b.party}</div>
-              <div className="text-[11px] text-slate-400">Bill {b.bill_no} · {b.date} · {b.lines} line(s)</div>
+              <div className="text-[11px] text-slate-400">Bill {b.bill_no} · {fmtRaw(b.date_raw, fmt)} · {b.lines} line(s)</div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <span className="font-bold text-slate-900">{inr(b.total)}</span>
@@ -142,14 +189,15 @@ function PurchaseImport() {
   const [file, setFile] = useState(null)
   const [done, setDone] = useState(null)
   const [err, setErr] = useState(null)
+  const [dfmt, setDfmt] = useState('dmy')
   const onFile = async (f) => {
     setFile(f); setBusy(true); setDone(null); setErr(null)
-    try { setPv(await api.importPurchasePreview(f)) } catch (e) { setErr(e.message); toast.error(e.message) }
+    try { const p = await api.importPurchasePreview(f); setDfmt(p.date_info?.detected === 'mdy' ? 'mdy' : 'dmy'); setPv(p) } catch (e) { setErr(e.message); toast.error(e.message) }
     setBusy(false)
   }
   const commit = async () => {
     setBusy(true); setErr(null)
-    try { const r = await api.importPurchaseCommit(file); setDone(r); setPv(null); toast.success('Purchase added to stock') }
+    try { const r = await api.importPurchaseCommit(file, dfmt); setDone(r); setPv(null); toast.success('Purchase added to stock') }
     catch (e) { setErr(e.message); toast.error(e.message) }
     setBusy(false)
   }
@@ -165,16 +213,18 @@ function PurchaseImport() {
         <Dropzone testid="purchase-file-input" onFile={onFile} busy={busy} icon={FileSpreadsheet} title="Choose Purchase CSV" hint="e.g. PURCHASE HAIER.csv" />
       )}
       {err && <ErrBox msg={err} onRetry={() => setErr(null)} />}
-      {pv && <PurchasePreview pv={pv} busy={busy} onClose={() => setPv(null)} onConfirm={commit} />}
+      {pv && <PurchasePreview pv={pv} busy={busy} fmt={dfmt} setFmt={setDfmt} onClose={() => setPv(null)} onConfirm={commit} />}
     </Card>
   )
 }
 
-function PurchasePreview({ pv, busy, onClose, onConfirm }) {
+function PurchasePreview({ pv, busy, fmt, setFmt, onClose, onConfirm }) {
   const s = pv.summary
+  const [dfrom, dto] = rawRange(pv.date_info?.raws || [], fmt)
   return (
     <Modal title={`Review purchase${pv.brand ? ' · ' + pv.brand : ''}`} onClose={onClose}>
-      <div className="text-[12px] text-slate-500 mb-3">From <b className="text-slate-700">{pv.supplier || '—'}</b>{s.date_from ? ` · ${s.date_from} → ${s.date_to}` : ''}</div>
+      <DateFormatBar dateInfo={pv.date_info} fmt={fmt} setFmt={setFmt} />
+      <div className="text-[12px] text-slate-500 mb-3">From <b className="text-slate-700">{pv.supplier || '—'}</b>{dfrom ? ` · ${fmtRaw(dfrom, fmt)} → ${fmtRaw(dto, fmt)}` : ''}</div>
       <div className="grid grid-cols-3 gap-2 mb-3">
         <Stat label="IMEI units" value={s.imei_units} tone="text-brand-700" />
         <Stat label="Qty-only" value={s.qty_only} />
