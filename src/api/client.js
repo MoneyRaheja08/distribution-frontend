@@ -72,7 +72,7 @@ export const api = {
   reportSalesVsColl: (from, to) => USE_MOCK ? mock.reportSalesVsColl() : http('/reports/sales-vs-collection?from=' + from + '&to=' + to),
   reportBillAgeing: () => USE_MOCK ? mock.reportBillAgeing() : http('/reports/bill-ageing'),
   reportBills: (from, to, source) => USE_MOCK ? mock.reportBills(from, to, source) : http('/reports/bills?from=' + from + '&to=' + to + (source ? '&source=' + source : '')),
-  reportSales: (from, to, q = '') => USE_MOCK ? mock.reportSales(from, to, q) : http('/reports/sales?from=' + from + '&to=' + to + (q ? '&q=' + encodeURIComponent(q) : '')),
+  reportSales: (from, to, q = '', brand = '') => USE_MOCK ? mock.reportSales(from, to, q) : http('/reports/sales?from=' + from + '&to=' + to + (q ? '&q=' + encodeURIComponent(q) : '') + (brand ? '&brand=' + encodeURIComponent(brand) : '')),
   reportPurchasesBrand: (from, to, brand = '') => USE_MOCK ? mock.reportPurchasesBrand(from, to, brand) : http('/reports/purchases-brand?from=' + from + '&to=' + to + (brand ? '&brand=' + encodeURIComponent(brand) : '')),
   reportProfit: (from, to, brand = '') => USE_MOCK ? mock.reportProfit(from, to, brand) : http('/reports/profit?from=' + from + '&to=' + to + (brand ? '&brand=' + encodeURIComponent(brand) : '')),
   reportProfit2: (from, to, brand = '') => USE_MOCK ? mock.reportProfit2(from, to, brand) : http('/reports/profit2?from=' + from + '&to=' + to + (brand ? '&brand=' + encodeURIComponent(brand) : '')),
