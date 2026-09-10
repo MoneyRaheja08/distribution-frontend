@@ -277,3 +277,5 @@ export const reportProfit2 = () => wait({ duplicates_ignored: 0, rows: [], by_mo
 
 export const reportBeat = () => wait({ from: '', to: '', totals: { collected: 90000, receipts: 4, visited: 5, assigned: 14, cheques: 1 }, rows: [{ collector: 'Ravi', assigned: 14, visited: 5, visits: 6, collected: 90000, receipts: 4, cheques: 1, cheque_amt: 20000 }] })
 export const reportFollowup = () => wait({ count: 2, total: 308328, rows: [{ dealer: 'KHANNA ENTERPRISES', area: 'Dadu Majra', phone: '9810011111', outstanding: 217628, oldest_due: 121, age_0_30: 125628, age_31_60: 0, age_61_90: 20000, age_90p: 72000, over_limit: false, last_payment: { amount: 193138, date: '2026-06-30' } }] })
+
+export const empty = (v) => wait(v)

@@ -9,9 +9,18 @@ import { shareImage } from '../../lib/share.js'
 import { toast } from '../../lib/toast.js'
 import { useAuth } from '../../auth/AuthContext.jsx'
 import { Spin, BackBtn, Card, SkeletonList } from '../../components/ui.jsx'
+import { Big, ExportBtn, Section, Row2, Metric, FilterBar, Search, Pick, SelPick } from '../../components/reportBits.jsx'
+import { DealerScorecard, CreditTrend, InactiveDealers, MonthOnMonth, CategoryMix, PriceRealisation, CashFlow, CollectorEfficiency, SchemeTracker, Digest } from './Reports2.jsx'
 
 const monthStart = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01` }
 const today = () => new Date().toISOString().slice(0, 10)
+const GROUPS = [
+  ['Collect', [['followup', 'Follow-up'], ['beat', 'Beat sheet'], ['collections', 'Collections'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['cashflow', 'Cash forecast'], ['colleff', 'Collector efficiency']]],
+  ['Sales', [['sales', 'Dealer × Model'], ['mom', 'Month vs month'], ['catmix', 'Category mix'], ['price', 'Price realisation'], ['inactive', 'Lost dealers'], ['billspdf', 'PDF bills'], ['purchases', 'Brand buys']]],
+  ['Profit', [['profit', 'Profit'], ['profit2', 'Profit 2 · Real'], ['scheme', 'Scheme tracker'], ['dscore', 'Dealer scorecard'], ['trend', 'Credit trend'], ['scorecard', 'Brand scorecard'], ['top', 'Top performers'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']]],
+  ['Daily', [['digest', 'WhatsApp digest']]],
+]
+const NO_DATES = new Set(['ageing', 'billage', 'cashflow', 'inactive', 'trend', 'mom', 'scheme', 'digest', 'followup'])
 
 
 
@@ -25,15 +34,19 @@ export default function Reports() {
       <BackBtn label="Overview" />
       <div className="text-xs font-bold text-slate-600 mb-2.5 px-0.5">Reports</div>
 
-      <div className="flex gap-1.5 mb-3 overflow-x-auto">
-        {[['followup', 'Follow-up'], ['beat', 'Beat sheet'], ['collections', 'Collections'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['billspdf', 'PDF bills'], ['sales', 'Dealer × Model'], ['purchases', 'Brand buys'], ['profit', 'Profit'], ['profit2', 'Profit 2 · Real'], ['scorecard', 'Scorecard'], ['top', 'Top performers'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']].map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k)}
-            className={'whitespace-nowrap text-[13px] font-semibold px-3.5 py-2 rounded-lg border ' +
-              (tab === k ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500')}>{l}</button>
-        ))}
-      </div>
+      {GROUPS.map(([g, tabs]) => (
+        <div key={g} className="flex items-center gap-1.5 mb-2 overflow-x-auto">
+          <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400 w-16 shrink-0">{g}</span>
+          {tabs.map(([k, l]) => (
+            <button key={k} data-testid={'tab-' + k} onClick={() => setTab(k)}
+              className={'whitespace-nowrap text-[12px] font-semibold px-3 py-1.5 rounded-lg border ' +
+                (tab === k ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500')}>{l}</button>
+          ))}
+        </div>
+      ))}
+      <div className="mb-2" />
 
-      {tab !== 'ageing' && tab !== 'billage' && (
+      {!NO_DATES.has(tab) && (
         <div className="flex items-end gap-2 mb-4 bg-white border border-slate-200 rounded-xl p-3">
           <label className="flex-1 text-[11px] font-semibold text-slate-500">From
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="mt-1 w-full border border-slate-200 rounded-lg px-2 py-2 text-[13px]" /></label>
@@ -56,44 +69,24 @@ export default function Reports() {
       {tab === 'scorecard' && <BrandScorecard from={from} to={to} />}
       {tab === 'top' && <TopPerformers from={from} to={to} />}
       {tab === 'svc' && <SalesVsColl from={from} to={to} />}
+      {tab === 'dscore' && <DealerScorecard from={from} to={to} />}
+      {tab === 'trend' && <CreditTrend />}
+      {tab === 'inactive' && <InactiveDealers />}
+      {tab === 'mom' && <MonthOnMonth />}
+      {tab === 'catmix' && <CategoryMix from={from} to={to} />}
+      {tab === 'price' && <PriceRealisation from={from} to={to} />}
+      {tab === 'cashflow' && <CashFlow />}
+      {tab === 'colleff' && <CollectorEfficiency from={from} to={to} />}
+      {tab === 'scheme' && <SchemeTracker />}
+      {tab === 'digest' && <Digest />}
     </>
   )
 }
 
-function Big({ label, value }) {
-  return <div className="bg-white border border-slate-200 rounded-xl p-4 mb-3"><div className="text-2xl font-extrabold">{value}</div><div className="text-[11px] text-slate-500 mt-0.5">{label}</div></div>
-}
-function ExportBtn({ onClick }) {
-  return <button onClick={onClick} className="text-[12px] font-semibold text-emerald-700 bg-emerald-50 rounded-full px-3 py-1.5 flex items-center gap-1"><Download size={13} />Excel</button>
-}
-function Section({ title, action, children }) {
-  return (
-    <div className="mb-4">
-      <div className="flex justify-between items-center mb-2 px-0.5"><div className="text-xs font-bold text-slate-600">{title}</div>{action}</div>
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">{children}</div>
-    </div>
-  )
-}
-function Row2({ a, b, bold }) {
-  return <div className={'flex justify-between px-3.5 py-2.5 border-b border-slate-50 last:border-0 text-[13px] ' + (bold ? 'font-bold' : '')}><span className={bold ? 'text-slate-800' : 'text-slate-500'}>{a}</span><span className="text-slate-900">{b}</span></div>
-}
 
 const BUCKET_LABEL = { age_0_30: '0–30', age_31_60: '31–60', age_61_90: '61–90', age_90p: '90+' }
 const BUCKET_OPTS = [['All', 'All ages'], ['age_0_30', '0–30'], ['age_31_60', '31–60'], ['age_61_90', '61–90'], ['age_90p', '90+']]
 
-function FilterBar({ children }) {
-  return <div className="flex flex-wrap gap-2 mb-3">{children}</div>
-}
-function Search({ value, onChange, placeholder }) {
-  return <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder || 'Search dealer…'}
-    className="flex-1 min-w-[150px] border border-slate-200 rounded-lg px-3 py-2 bg-white text-[14px] outline-none focus:border-emerald-500" />
-}
-function Pick({ value, onChange, options }) {
-  return <select value={value} onChange={(e) => onChange(e.target.value)}
-    className="border border-slate-200 rounded-lg px-2.5 py-2 bg-white text-[13px] font-semibold text-slate-600 outline-none focus:border-emerald-500">
-    {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-  </select>
-}
 
 function Collections({ from, to }) {
   const [r, setR] = useState(null)
@@ -277,9 +270,6 @@ function BrandScorecard({ from, to }) {
   )
 }
 
-function Metric({ label, value, sub, tone = 'text-slate-900' }) {
-  return <div className="bg-slate-50 rounded-xl p-2.5"><div className="text-[10px] uppercase tracking-wide text-slate-400">{label}</div><div className={'font-display text-base font-bold ' + tone}>{value}</div><div className="text-[10px] text-slate-400">{sub}</div></div>
-}
 
 function BrandPick({ value, onChange, brands }) {
   return (
@@ -332,15 +322,6 @@ function ProfitReport({ from, to }) {
   )
 }
 
-function SelPick({ value, onChange, options, label, testid }) {
-  return (
-    <select data-testid={testid} value={value} onChange={(e) => onChange(e.target.value)}
-      className="border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-[12px] font-semibold text-slate-700 outline-none focus:border-emerald-500 max-w-[220px]">
-      <option value="">{label}</option>
-      {options.map((o) => <option key={o} value={o}>{o}</option>)}
-    </select>
-  )
-}
 
 function SalesReport({ from, to }) {
   const [r, setR] = useState(null)
@@ -548,7 +529,8 @@ function Profit2({ from, to }) {
 
   const days = r.period_days || 30
   const monthK = 30.4 / days                       // period → 30-day equivalent
-  const schemeP = r.revenue * scheme / 100
+  const useReal = r.scheme_count > 0
+  const schemeP = useReal ? r.scheme_earned : r.revenue * scheme / 100
   const opexP = r.revenue * opex / 100
   const payables = r.ann_cogs * payDays / 365
   const wc = Math.max(0, r.stock_value + r.receivables - payables)
@@ -629,7 +611,8 @@ function Profit2({ from, to }) {
 
         <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-5">
           <div className="text-[12px] font-bold text-slate-500 uppercase tracking-wide mb-3">Your assumptions (not in data)</div>
-          <P2Slider label="Scheme / incentive income" val={scheme} set={setScheme} min={0} max={12} step={0.25} unit="%" hint="Extra % from the brand for targets, displays." />
+          {useReal ? <div className="mb-4 text-[12px] text-emerald-800 bg-emerald-50 rounded-lg px-3 py-2">Scheme income uses real earned payouts from the Scheme tracker ({inr(r.scheme_earned)}).</div>
+            : <P2Slider label="Scheme / incentive income" val={scheme} set={setScheme} min={0} max={12} step={0.25} unit="%" hint="Extra % from the brand for targets, displays. Add real targets in Scheme tracker to replace this." />}
           <P2Slider label="Operating cost" val={opex} set={setOpex} min={0} max={6} step={0.25} unit="%" hint="Godown, staff, delivery, damage as % of sales." />
           <P2Slider label="Cost of capital" val={coc} set={setCoc} min={6} max={24} step={0.5} unit="%" hint="Interest on the money you keep locked up." />
           <P2Slider label={(brand || 'Supplier') + ' credit days'} val={payDays} set={setPayDays} min={0} max={45} step={1} unit=" d" hint="How long you get to pay the brand." />
@@ -642,7 +625,7 @@ function Profit2({ from, to }) {
           <div className="text-[11px] text-slate-400">actual period figures</div>
         </div>
         <Row2 a="Gross margin (revenue − cost of goods)" b={'+' + inr(r.gross)} />
-        <Row2 a={'Scheme income (' + inr(r.revenue) + ' × ' + scheme + '%)'} b={'+' + inr(Math.round(schemeP))} />
+        <Row2 a={useReal ? 'Scheme income (earned from ' + r.scheme_count + ' tracked scheme(s))' : 'Scheme income (' + inr(r.revenue) + ' × ' + scheme + '%)'} b={'+' + inr(Math.round(schemeP))} />
         <Row2 a={'Operating cost (' + inr(r.revenue) + ' × ' + opex + '%)'} b={'−' + inr(Math.round(opexP))} />
         <Row2 a={'Financing cost (' + inr(Math.round(wc)) + ' × ' + coc + '% × ' + days + '/365 days)'} b={'−' + inr(Math.round(finP))} />
         <div className="flex justify-between items-baseline pt-3 mt-1 border-t-2 border-slate-800">
