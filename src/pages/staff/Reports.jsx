@@ -3,6 +3,7 @@ import { Download } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { inr } from '../../lib/format.js'
 import { exportSheet } from '../../lib/excel.js'
+import { waLink, reminderText } from '../../lib/whatsapp.js'
 import { renderTableImage } from '../../lib/tableImage.js'
 import { shareImage } from '../../lib/share.js'
 import { toast } from '../../lib/toast.js'
@@ -25,7 +26,7 @@ export default function Reports() {
       <div className="text-xs font-bold text-slate-600 mb-2.5 px-0.5">Reports</div>
 
       <div className="flex gap-1.5 mb-3 overflow-x-auto">
-        {[['collections', 'Collections'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['billspdf', 'PDF bills'], ['sales', 'Dealer × Model'], ['purchases', 'Brand buys'], ['profit', 'Profit'], ['profit2', 'Profit 2 · Real'], ['scorecard', 'Scorecard'], ['top', 'Top performers'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']].map(([k, l]) => (
+        {[['followup', 'Follow-up'], ['beat', 'Beat sheet'], ['collections', 'Collections'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['billspdf', 'PDF bills'], ['sales', 'Dealer × Model'], ['purchases', 'Brand buys'], ['profit', 'Profit'], ['profit2', 'Profit 2 · Real'], ['scorecard', 'Scorecard'], ['top', 'Top performers'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']].map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
             className={'whitespace-nowrap text-[13px] font-semibold px-3.5 py-2 rounded-lg border ' +
               (tab === k ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500')}>{l}</button>
@@ -42,6 +43,8 @@ export default function Reports() {
       )}
 
       {tab === 'collections' && <Collections from={from} to={to} />}
+      {tab === 'followup' && <Followup />}
+      {tab === 'beat' && <Beat from={from} to={to} />}
       {tab === 'ageing' && <Ageing />}
       {tab === 'activity' && <Activity from={from} to={to} />}
       {tab === 'billage' && <BillAgeing />}
@@ -684,6 +687,90 @@ function Profit2({ from, to }) {
           : <>Your cash stays locked for <b>{Math.round(ccc)} days</b> each cycle. Gross margin is <b>{r.gross_margin_pct}%</b>; after schemes, opex and financing you net <b>{inr(Math.round(netP))}</b> over these {days} days (≈ {inr(Math.round(netM))}/month) — a <b>{Math.round(roce)}%</b> annual return on the <b>{inr(Math.round(wc))}</b> you keep tied up.</>}
       </div>
       <div className="text-[11px] text-slate-400 mt-3">Revenue, cost and stock are your imported {label} sales &amp; purchases in this date range. {r.receivables_estimated ? 'Receivables are an estimated share of total dealer outstanding, split by this brand\u2019s revenue.' : 'Receivables are your total dealer outstanding.'} Scheme, opex, cost-of-capital and credit days are your inputs above. Monthly figures are the period figures scaled by 30.4 ÷ {days} days; annual return = net profit × 365 ÷ {days} ÷ working capital.</div>
+    </>
+  )
+}
+
+
+function Beat({ from, to }) {
+  const [r, setR] = useState(null)
+  useEffect(() => { setR(null); api.reportBeat(from, to).then(setR) }, [from, to])
+  if (!r) return <SkeletonList rows={5} />
+  const t = r.totals || {}
+  const dl = () => exportSheet('beat-sheet.xlsx',
+    [['Collector', 'Assigned', 'Visited', 'Visits', 'Collected', 'Receipts', 'Cheques', 'Cheque amt'],
+     ...r.rows.map((x) => [x.collector, x.assigned, x.visited, x.visits, x.collected, x.receipts, x.cheques, x.cheque_amt]),
+     ['Total', t.assigned, t.visited, '', t.collected, t.receipts, t.cheques, '']],
+    { money: [4, 7], boldRows: [r.rows.length + 1], sheet: 'Beat' })
+  return (
+    <>
+      <Big label={`Collector beat · ${from} to ${to}`} value={inr(t.collected || 0)} />
+      <Section title="Per collector" action={<ExportBtn onClick={dl} />}>
+        {r.rows.length === 0 ? <Row2 a="No collector activity in range" b="" /> : r.rows.map((x, i) => (
+          <div key={i} className="px-3.5 py-3 border-b border-slate-50 last:border-0">
+            <div className="flex justify-between items-baseline">
+              <span className="text-[14px] font-semibold text-slate-800">{x.collector}</span>
+              <span className="text-[15px] font-bold text-emerald-700">{inr(x.collected)}</span>
+            </div>
+            <div className="text-[11px] text-slate-500 mt-1">
+              Visited <b className="text-slate-700">{x.visited}</b> of {x.assigned} assigned · {x.receipts} receipts
+              {x.cheques > 0 ? <> · {x.cheques} cheque{x.cheques > 1 ? 's' : ''} ({inr(x.cheque_amt)})</> : ''}
+            </div>
+          </div>
+        ))}
+      </Section>
+    </>
+  )
+}
+
+function Followup() {
+  const [r, setR] = useState(null)
+  const [minAmt, setMinAmt] = useState('')
+  const [bucket, setBucket] = useState('')
+  const load = (b, m) => { setR(null); api.reportFollowup({ bucket: b, min_amount: m }).then(setR) }
+  useEffect(() => { load(bucket, minAmt) }, []) // eslint-disable-line
+  if (!r) return <SkeletonList rows={5} />
+  const dl = () => exportSheet('followup.xlsx',
+    [['Dealer', 'Area', 'Phone', 'Outstanding', 'Oldest due (d)', '0-30', '31-60', '61-90', '90+', 'Last paid', 'On'],
+     ...r.rows.map((x) => [x.dealer, x.area, x.phone, x.outstanding, x.oldest_due, x.age_0_30, x.age_31_60, x.age_61_90, x.age_90p, x.last_payment ? x.last_payment.amount : '', x.last_payment ? x.last_payment.date : ''])],
+    { money: [4, 6, 7, 8, 9, 10], sheet: 'Follow-up' })
+  const BUCKETS = [['', 'All overdue'], ['age_90p', '90+ only'], ['age_61_90', '61–90'], ['age_31_60', '31–60'], ['age_0_30', '0–30']]
+  return (
+    <>
+      <Big label={`Who to chase · ${r.count} dealer(s)`} value={inr(r.total)} />
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <Pick value={bucket} onChange={(v) => { setBucket(v); load(v, minAmt) }} options={BUCKETS} />
+        <input value={minAmt} onChange={(e) => setMinAmt(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && load(bucket, minAmt)}
+          placeholder="Min ₹" type="number"
+          className="w-28 border border-slate-200 rounded-lg px-3 py-2 bg-white text-[14px] outline-none focus:border-emerald-500" />
+        <button onClick={() => load(bucket, minAmt)} className="text-[13px] font-semibold text-white bg-slate-900 rounded-lg px-3.5 py-2">Apply</button>
+        <div className="ml-auto"><ExportBtn onClick={dl} /></div>
+      </div>
+      <div className="space-y-2">
+        {r.rows.length === 0 ? <div className="text-center text-slate-400 text-sm py-10 bg-white border border-dashed border-slate-200 rounded-2xl">Nothing to chase 🎉</div> :
+          r.rows.map((x) => (
+            <div key={x.dealer_id} className="bg-white border border-slate-100 rounded-2xl shadow-sm p-3.5">
+              <div className="flex justify-between items-start gap-2">
+                <div className="min-w-0">
+                  <div className="text-[15px] font-semibold text-slate-800 truncate">{x.dealer}</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">{x.area || '—'}{x.phone ? ' · ' + x.phone : ''}</div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-[16px] font-bold text-slate-900">{inr(x.outstanding)}</div>
+                  <div className={'text-[11px] font-semibold ' + (x.oldest_due > 90 ? 'text-red-600' : 'text-slate-400')}>{x.oldest_due}d oldest</div>
+                </div>
+              </div>
+              <div className="text-[11px] text-slate-500 mt-2">
+                {x.age_90p > 0 && <span className="text-red-600 font-semibold">90+: {inr(x.age_90p)}  </span>}
+                {x.age_61_90 > 0 && <span>61–90: {inr(x.age_61_90)}  </span>}
+                {x.last_payment ? <>· last paid {inr(x.last_payment.amount)} on {x.last_payment.date}</> : '· no payments yet'}
+                {x.over_limit && <span className="text-red-600 font-semibold"> · over limit</span>}
+              </div>
+              {x.phone && <a href={waLink(x.phone, reminderText(x.dealer, x.outstanding, { age_0_30: x.age_0_30, age_31_60: x.age_31_60, age_61_90: x.age_61_90, age_90p: x.age_90p }))} target="_blank" rel="noreferrer"
+                className="inline-block mt-2 text-[12px] font-semibold text-white bg-[#25D366] rounded-lg px-3 py-1.5">WhatsApp reminder</a>}
+            </div>
+          ))}
+      </div>
     </>
   )
 }

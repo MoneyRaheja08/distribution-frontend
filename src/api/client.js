@@ -78,6 +78,8 @@ export const api = {
   reportProfit2: (from, to, brand = '') => USE_MOCK ? mock.reportProfit2(from, to, brand) : http('/reports/profit2?from=' + from + '&to=' + to + (brand ? '&brand=' + encodeURIComponent(brand) : '')),
   reportBrandScorecard: (from, to) => USE_MOCK ? mock.reportBrandScorecard(from, to) : http('/reports/brand-scorecard?from=' + from + '&to=' + to),
   reportTopPerformers: (from, to) => USE_MOCK ? mock.reportTopPerformers(from, to) : http('/reports/top-performers?from=' + from + '&to=' + to),
+  reportBeat: (from, to) => USE_MOCK ? mock.reportBeat(from, to) : http('/reports/beat?from=' + from + '&to=' + to),
+  reportFollowup: (f = {}) => USE_MOCK ? mock.reportFollowup() : http('/reports/followup?' + new URLSearchParams(Object.entries(f).filter(([, v]) => v !== '' && v != null)).toString()),
   agingStock: (days = 60) => USE_MOCK ? mock.agingStock(days) : http('/catalog/aging-stock?days=' + days),
   backup: () => USE_MOCK ? mock.backup() : http('/backup'),
   addBill: (id, bill) => USE_MOCK ? mock.addBill(id, bill) : http('/dealers/' + id + '/bills', { method: 'POST', body: bill }),

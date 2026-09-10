@@ -274,3 +274,6 @@ export const deleteProduct = (plid, pid) => { store.plproducts[plid] = (store.pl
 export const me = () => wait({ user: store.users.find((u) => u.id === store._me) || null })
 
 export const reportProfit2 = () => wait({ duplicates_ignored: 0, rows: [], by_month: [], brand: 'HAIER', brands: ['HAIER', 'SAMSUNG'], receivables_estimated: true, total_receivables: 3945000, from: '', to: '', period_days: 30, revenue: 4000000, cogs: 3800000, gross: 200000, gross_margin_pct: 5, units: 120, stock_value: 3120000, receivables: 3945000, ann_sales: 48000000, ann_cogs: 45600000, stock_days: 25, recv_days: 30 })
+
+export const reportBeat = () => wait({ from: '', to: '', totals: { collected: 90000, receipts: 4, visited: 5, assigned: 14, cheques: 1 }, rows: [{ collector: 'Ravi', assigned: 14, visited: 5, visits: 6, collected: 90000, receipts: 4, cheques: 1, cheque_amt: 20000 }] })
+export const reportFollowup = () => wait({ count: 2, total: 308328, rows: [{ dealer: 'KHANNA ENTERPRISES', area: 'Dadu Majra', phone: '9810011111', outstanding: 217628, oldest_due: 121, age_0_30: 125628, age_31_60: 0, age_61_90: 20000, age_90p: 72000, over_limit: false, last_payment: { amount: 193138, date: '2026-06-30' } }] })
