@@ -329,33 +329,45 @@ function ProfitReport({ from, to }) {
   )
 }
 
+function SelPick({ value, onChange, options, label, testid }) {
+  return (
+    <select data-testid={testid} value={value} onChange={(e) => onChange(e.target.value)}
+      className="border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-[12px] font-semibold text-slate-700 outline-none focus:border-emerald-500 max-w-[220px]">
+      <option value="">{label}</option>
+      {options.map((o) => <option key={o} value={o}>{o}</option>)}
+    </select>
+  )
+}
+
 function SalesReport({ from, to }) {
   const [r, setR] = useState(null)
   const [q, setQ] = useState('')
-  const [brand, setBrand] = useState('')
-  const load = () => { setR(null); api.reportSales(from, to, q, brand).then(setR) }
-  useEffect(() => { setR(null); api.reportSales(from, to, q, brand).then(setR) }, [from, to, brand]) // eslint-disable-line
+  const [f, setF] = useState({ brand: '', dealer: '', model: '' })
+  const [opts, setOpts] = useState({ dealers: [], models: [], brands: [] })
+  const load = (qq, ff) => { setR(null); api.reportSales(from, to, qq, ff).then((x) => { setR(x); setOpts({ dealers: x.dealers || [], models: x.models || [], brands: x.brands || [] }) }) }
+  const setFilter = (k, v) => { const nf = { ...f, [k]: v }; setF(nf); load(q, nf) }
+  const run = () => load(q, f)
+  useEffect(() => { load(q, f) }, [from, to]) // eslint-disable-line
   if (!r) return <SkeletonList rows={5} />
-  const brandOpts = ['', ...(r.brands || [])]
-  const downloadExcel = () => exportSheet('dealer-model-sales.xlsx',
-    [['Date', 'Bill', 'Dealer', 'Brand', 'Model', 'IMEI', 'Qty', 'Rate', 'Amount'],
-     ...r.rows.map((x) => [x.date, x.bill_no, x.dealer, x.brand, x.model, x.imei, x.qty, x.rate, x.amount])],
-    { money: [7, 8], sheet: 'Sales' })
+  const tag = [f.brand, f.dealer, f.model].filter(Boolean).join(' · ')
+  const exportLines = () => exportSheet('sales-' + (tag || 'all').replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '.xlsx',
+    [['Date', 'Bill', 'Dealer', 'Brand', 'Model', 'IMEI', 'Qty', 'Rate', 'Amount'], ...r.rows.map((x) => [x.date, x.bill_no, x.dealer, x.brand, x.model, x.imei, x.qty, x.rate, x.amount]), ['Total', '', '', '', '', '', r.units, '', r.total]],
+    { money: [7, 8], boldRows: [r.rows.length + 1], sheet: 'Sales' })
   return (
     <>
-      <Big label={`Sales · ${from} to ${to} · ${r.count} line(s) · ${r.units} IMEI${brand ? ' · ' + brand : ''}`} value={inr(r.total)} />
+      <Big label={`Sales · ${tag || 'All'} · ${from} to ${to} · ${r.count} line(s) · ${r.units} IMEI`} value={inr(r.total)} />
       <div className="flex flex-wrap items-center gap-2 mb-3">
-        <select value={brand} onChange={(e) => setBrand(e.target.value)}
-          className="border border-slate-200 rounded-lg px-3 py-2 bg-white text-[13px] font-semibold text-slate-700 outline-none focus:border-emerald-500">
-          {brandOpts.map((b) => <option key={b} value={b}>{b === '' ? 'All brands' : b}</option>)}
-        </select>
-        <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && load()}
-          placeholder="Filter dealer, model or IMEI…"
-          className="flex-1 min-w-[150px] border border-slate-200 rounded-lg px-3 py-2 bg-white text-[14px] outline-none focus:border-emerald-500" />
-        <button onClick={load} className="text-[13px] font-semibold text-white bg-slate-900 rounded-lg px-3.5 py-2">Search</button>
-        <button onClick={downloadExcel} className="text-[13px] font-semibold text-white bg-emerald-600 rounded-lg px-3.5 py-2 flex items-center gap-1">Download Excel</button>
+        <SelPick testid="sales-brand" label="All brands" value={f.brand} onChange={(v) => setFilter('brand', v)} options={opts.brands} />
+        <SelPick testid="sales-dealer" label="All dealers" value={f.dealer} onChange={(v) => setFilter('dealer', v)} options={opts.dealers} />
+        <SelPick testid="sales-model" label="All models" value={f.model} onChange={(v) => setFilter('model', v)} options={opts.models} />
+        {tag && <button data-testid="sales-clear" onClick={() => { const nf = { brand: '', dealer: '', model: '' }; setF(nf); load(q, nf) }} className="text-[12px] font-semibold text-slate-500 underline">Clear</button>}
+        <div className="ml-auto"><ExportBtn onClick={exportLines} /></div>
       </div>
-      <Section title="Top models sold" action={<ExportBtn onClick={() => exportSheet('top-models.xlsx', [['Model', 'Brand', 'Qty', 'Amount'], ...(r.by_model || []).map((m) => [m.model, m.brand, m.qty, m.amount])], { money: [3], sheet: 'Top models' })} />}>
+      <FilterBar>
+        <Search value={q} onChange={setQ} placeholder="Dealer, model or IMEI…" />
+        <button onClick={run} className="text-[12px] font-semibold text-brand-700 bg-brand-50 rounded-full px-3 py-1.5">Search</button>
+      </FilterBar>
+      <Section title="Models sold" action={<ExportBtn onClick={() => exportSheet('sales-by-model.xlsx', [['Model', 'Brand', 'Qty', 'Amount'], ...r.by_model.map((m) => [m.model, m.brand, m.qty, m.amount])], { money: [3], sheet: 'By model' })} />}>
         {(!r.by_model || r.by_model.length === 0) ? <Row2 a="No sales in range" b="" /> : r.by_model.map((m, i) => (
           <div key={i} className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-slate-50 last:border-0 text-[13px]">
             <span className="w-5 text-center font-display font-bold text-slate-300">{i + 1}</span>
@@ -367,7 +379,7 @@ function SalesReport({ from, to }) {
       <Section title="By dealer" action={<ExportBtn onClick={() => exportSheet('sales-by-dealer.xlsx', [['Dealer', 'Qty', 'Amount'], ...r.by_dealer.map((d) => [d.dealer, d.qty, d.amount])], { money: [2], sheet: 'By dealer' })} />}>
         {r.by_dealer.length === 0 ? <Row2 a="No sales in range" b="" /> : r.by_dealer.map((d, i) => <Row2 key={i} a={`${d.dealer} · ${d.qty}`} b={inr(d.amount)} bold />)}
       </Section>
-      <Section title="Lines · dealer × model × IMEI" action={<ExportBtn onClick={downloadExcel} />}>
+      <Section title="Lines · dealer × model × IMEI" action={<ExportBtn onClick={exportLines} />}>
         {r.rows.length === 0 ? <Row2 a="—" b="" /> : r.rows.slice(0, 300).map((x, i) => (
           <div key={i} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
             <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{x.dealer}</span><span className="font-bold text-slate-900 shrink-0">{inr(x.amount)}</span></div>

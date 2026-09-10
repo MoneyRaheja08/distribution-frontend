@@ -177,7 +177,7 @@ export const catalogUnits = (params = '') => {
   return wait(r)
 }
 export const imeiLookup = (imei) => wait({ imei: (imei || '').trim() || 'FZ03WUM0300GZS2F0257', brand: 'HAIER', group: 'HAIER MICROWAVE', model: 'HAIER M/W- HIL2801DBSJ:MWO', status: 'sold', purchase_bill: '5056153422', purchase_date: '2026-08-30', supplier: 'M/S HAIER APPLIENCES INDIA PVT', sale_bill: 'H00002', sale_dealer_name: 'ANAND SALES MOHALI', sale_date: '2026-04-09', sale_rate: 14209 })
-export const reportSales = (from, to) => wait({ from, to, total: 159533, units: 11, count: 11, rows: [
+export const reportSales = (from, to) => wait({ from, to, dealers: ['KHANNA ENTERPRISES'], models: [], brands: ['HAIER'], total: 159533, units: 11, count: 11, rows: [
   { date: '2026-04-09', bill_no: 'H00001', dealer: 'KHANNA ENTERPRISES', brand: 'HAIER', group: 'HAIER LED', model: 'HAIER LED- 32" LE32A7-N:HIL', imei: 'td005069009vgs8kxdxx', qty: 1, rate: 14209, amount: 14209 },
   { date: '2026-04-09', bill_no: 'H00002', dealer: 'ANAND SALES MOHALI', brand: 'HAIER', group: 'HAIER MICROWAVE', model: 'HAIER M/W- HIL2801DBSJ:MWO', imei: 'FZ03WUM0300GZS2F0257', qty: 1, rate: 11302, amount: 11302 },
 ], by_dealer: [{ dealer: 'KHANNA ENTERPRISES', amount: 125628, qty: 8 }, { dealer: 'ANAND SALES MOHALI', amount: 33905, qty: 3 }], by_model: [{ model: 'HAIER LED- 32" LE32A7-N:HIL', brand: 'HAIER', qty: 5, amount: 71045 }, { model: 'HAIER SEMI W/M- HTW80-196BR:NOIDA', brand: 'HAIER', qty: 3, amount: 54582 }, { model: 'HAIER M/W- HIL2801DBSJ:MWO', brand: 'HAIER', qty: 3, amount: 33906 }] })
