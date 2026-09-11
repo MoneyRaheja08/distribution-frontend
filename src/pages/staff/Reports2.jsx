@@ -504,3 +504,59 @@ export function Digest() {
     </>
   )
 }
+
+// 14. Daily sales (single day, filterable)
+export function DailySales({ initial }) {
+  const [day, setDay] = useState(initial || new Date().toISOString().slice(0, 10))
+  const [r, setR] = useState(null)
+  const [f, setF] = useState({ brand: '', dealer: '', model: '' })
+  const [opts, setOpts] = useState({ dealers: [], models: [], brands: [] })
+  const load = (d, ff) => { setR(null); api.reportSales(d, d, '', ff).then((x) => { setR(x); setOpts({ dealers: x.dealers || [], models: x.models || [], brands: x.brands || [] }) }) }
+  useEffect(() => { load(day, f) }, [day]) // eslint-disable-line
+  const setFilter = (k, v) => { const nf = { ...f, [k]: v }; setF(nf); load(day, nf) }
+  const shift = (n) => { const d = new Date(day); d.setDate(d.getDate() + n); setDay(d.toISOString().slice(0, 10)) }
+  if (!r) return <SkeletonList rows={5} />
+  const byBill = {}
+  r.rows.forEach((x) => { const b = byBill[x.bill_no] = byBill[x.bill_no] || { bill_no: x.bill_no, dealer: x.dealer, amount: 0, lines: [] }; b.amount += x.amount; b.lines.push(x) })
+  const bills = Object.values(byBill).sort((a, b) => b.amount - a.amount)
+  const dl = () => exportSheet('sales-' + day + '.xlsx',
+    [['Date', 'Bill', 'Dealer', 'Brand', 'Model', 'IMEI', 'Qty', 'Rate', 'Amount'], ...r.rows.map((x) => [x.date, x.bill_no, x.dealer, x.brand, x.model, x.imei, x.qty, x.rate, x.amount]), ['Total', '', '', '', '', '', r.units, '', r.total]],
+    { money: [7, 8], boldRows: [r.rows.length + 1], sheet: 'Sales ' + day })
+  const isToday = day === new Date().toISOString().slice(0, 10)
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <button data-testid="daily-prev" onClick={() => shift(-1)} className="text-[13px] font-bold text-slate-600 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">‹</button>
+        <input data-testid="daily-day" type="date" value={day} onChange={(e) => setDay(e.target.value)} className="border border-slate-200 rounded-lg px-2 py-1.5 text-[13px]" />
+        <button data-testid="daily-next" onClick={() => shift(1)} disabled={isToday} className="text-[13px] font-bold text-slate-600 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 disabled:opacity-40">›</button>
+        {!isToday && <button onClick={() => setDay(new Date().toISOString().slice(0, 10))} className="text-[12px] font-semibold text-emerald-700">Today</button>}
+        <div className="ml-auto"><ExportBtn onClick={dl} /></div>
+      </div>
+      <div className="grid grid-cols-3 gap-3 mb-3">
+        <Metric label={isToday ? 'Sales today' : 'Sales on ' + day} value={inr(r.total)} sub={bills.length + ' bills'} tone="text-emerald-700" />
+        <Metric label="Units" value={r.units || r.rows.reduce((s, x) => s + (x.qty || 0), 0)} sub={r.count + ' lines'} />
+        <Metric label="Dealers" value={r.by_dealer.length} sub="billed" />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <SelPick testid="daily-brand" label="All brands" value={f.brand} onChange={(v) => setFilter('brand', v)} options={opts.brands} />
+        <SelPick testid="daily-dealer" label="All dealers" value={f.dealer} onChange={(v) => setFilter('dealer', v)} options={opts.dealers} />
+        <SelPick testid="daily-model" label="All models" value={f.model} onChange={(v) => setFilter('model', v)} options={opts.models} />
+        {(f.brand || f.dealer || f.model) && <button onClick={() => { const nf = { brand: '', dealer: '', model: '' }; setF(nf); load(day, nf) }} className="text-[12px] font-semibold text-slate-500 underline">Clear</button>}
+      </div>
+      <Section title="By dealer">
+        {r.by_dealer.length === 0 ? <Row2 a="No sales on this day" b="" /> : r.by_dealer.map((d, i) => <Row2 key={i} a={`${d.dealer} · ${d.qty} units`} b={inr(d.amount)} bold />)}
+      </Section>
+      <Section title="Models sold">
+        {r.by_model.length === 0 ? <Row2 a="—" b="" /> : r.by_model.map((m, i) => <Row2 key={i} a={`${m.model} · ${m.qty}`} b={inr(m.amount)} />)}
+      </Section>
+      <Section title={'Bills · ' + bills.length}>
+        {bills.length === 0 ? <Row2 a="—" b="" /> : bills.map((b) => (
+          <div key={b.bill_no} data-testid="daily-bill" className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
+            <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{b.dealer} <span className="text-slate-400 font-normal">· {b.bill_no}</span></span><span className="font-bold shrink-0">{inr(b.amount)}</span></div>
+            {b.lines.map((l, i) => <div key={i} className="text-[11px] text-slate-500 mt-0.5 flex justify-between"><span className="truncate pr-2">{l.model}{l.imei ? ` · ${l.imei}` : ''}{l.qty > 1 ? ` × ${l.qty}` : ''}</span><span>{inr(l.amount)}</span></div>)}
+          </div>
+        ))}
+      </Section>
+    </>
+  )
+}

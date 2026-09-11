@@ -58,7 +58,7 @@ export default function AdminDashboard() {
         <div data-testid="dash-scheme-alert" className="mb-4 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
           <div className="flex justify-between items-center mb-1.5">
             <div className="text-[14px] font-bold text-red-900 flex items-center gap-2"><Target size={16} /> {d.schemes.alerts.length} scheme(s) behind pace · month {d.schemes.progress}% done</div>
-            <button onClick={() => nav('/reports')} className="text-[11px] font-semibold text-red-700">Tracker →</button>
+            <button onClick={() => nav('/reports?tab=scheme')} className="text-[11px] font-semibold text-red-700">Tracker →</button>
           </div>
           {d.schemes.alerts.map((x, i) => <div key={i} className="flex justify-between text-[13px] py-1 border-t border-red-100"><span className="text-red-900"><b>{x.label}</b> · {x.achieved_pct}% · push {x.gap_qty ? x.gap_qty + ' more units' : inr(x.gap_amount) + ' more'} ({x.basis}s)</span><span className="font-bold text-red-900">{inr(x.potential)}</span></div>)}
         </div>
@@ -71,28 +71,28 @@ export default function AdminDashboard() {
       )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4 stagger">
-        <Tile testid="dash-today-sales" icon={TrendingUp} label="Sales today" value={inr(t.sales.amount)} sub={t.sales.units + ' units · margin ' + inr(t.sales.margin)} tone="text-emerald-700" onClick={() => nav('/reports')} />
-        <Tile testid="dash-today-coll" icon={Wallet} label="Collected today" value={inr(t.collections)} sub={'MTD ' + inr(m.collections)} onClick={() => nav('/money')} />
-        <Tile testid="dash-mtd-sales" icon={TrendingUp} label="Sales this month" value={inr(m.sales.amount)} sub={`${m.sales.units} units · GM ${m.sales.margin_pct}% (${inr(m.sales.margin)})`} onClick={() => nav('/reports')} />
-        <Tile testid="dash-outstanding" icon={AlertTriangle} label="Outstanding" value={inr(d.outstanding)} sub={'90+ days ' + inr(d.over90)} tone={d.over90 > 0 ? 'text-red-600' : 'text-slate-900'} onClick={() => nav('/reports')} />
+        <Tile testid="dash-today-sales" icon={TrendingUp} label="Sales today" value={inr(t.sales.amount)} sub={t.sales.units + ' units · margin ' + inr(t.sales.margin)} tone="text-emerald-700" onClick={() => nav('/reports?tab=daily&day=' + d.date)} />
+        <Tile testid="dash-today-coll" icon={Wallet} label="Collected today" value={inr(t.collections)} sub={'MTD ' + inr(m.collections)} onClick={() => nav('/reports?tab=collections&from=' + d.date + '&to=' + d.date)} />
+        <Tile testid="dash-mtd-sales" icon={TrendingUp} label="Sales this month" value={inr(m.sales.amount)} sub={`${m.sales.units} units · GM ${m.sales.margin_pct}% (${inr(m.sales.margin)})`} onClick={() => nav('/reports?tab=profit2&from=' + d.date.slice(0, 7) + '-01&to=' + d.date)} />
+        <Tile testid="dash-outstanding" icon={AlertTriangle} label="Outstanding" value={inr(d.outstanding)} sub={'90+ days ' + inr(d.over90)} tone={d.over90 > 0 ? 'text-red-600' : 'text-slate-900'} onClick={() => nav('/reports?tab=ageing')} />
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5 stagger">
-        <Tile testid="dash-forecast" icon={Wallet} label="Cash expected · 7 d" value={inr(d.forecast.week1)} sub={'next 30 d ' + inr(d.forecast.next30)} tone="text-emerald-700" onClick={() => nav('/reports')} />
-        <Tile testid="dash-risk" icon={AlertTriangle} label="At-risk receivables" value={inr(d.forecast.at_risk)} sub="45 d past usual pay time" tone={d.forecast.at_risk > 0 ? 'text-red-600' : 'text-slate-900'} onClick={() => nav('/reports')} />
+        <Tile testid="dash-forecast" icon={Wallet} label="Cash expected · 7 d" value={inr(d.forecast.week1)} sub={'next 30 d ' + inr(d.forecast.next30)} tone="text-emerald-700" onClick={() => nav('/reports?tab=cashflow')} />
+        <Tile testid="dash-risk" icon={AlertTriangle} label="At-risk receivables" value={inr(d.forecast.at_risk)} sub="45 d past usual pay time" tone={d.forecast.at_risk > 0 ? 'text-red-600' : 'text-slate-900'} onClick={() => nav('/reports?tab=followup')} />
         <Tile testid="dash-stock" icon={Package} label="Stock on hand" value={inr(d.stock.value)} sub={d.stock.units + ' units · ' + d.low_stock.length + ' low'} onClick={() => nav('/stock')} />
-        <Tile testid="dash-schemes" icon={Target} label="Scheme earned" value={inr(d.schemes.earned)} sub={'potential ' + inr(d.schemes.potential) + ' · month ' + d.schemes.progress + '%'} tone="text-emerald-700" onClick={() => nav('/reports')} />
+        <Tile testid="dash-schemes" icon={Target} label="Scheme earned" value={inr(d.schemes.earned)} sub={'potential ' + inr(d.schemes.potential) + ' · month ' + d.schemes.progress + '%'} tone="text-emerald-700" onClick={() => nav('/reports?tab=scheme')} />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
-        <Panel title="Dealers paying slower" testid="dash-slowing" action={<Go to="/reports" />}>
+        <Panel title="Dealers paying slower" testid="dash-slowing" action={<Go to="/reports?tab=trend" />}>
           {d.slowing.length === 0 ? <div className="text-[12px] text-slate-400 py-3">No dealer is slowing down. Good.</div>
             : d.slowing.map((x, i) => <Line key={i} a={x.name} sub={`now ${x.latest} d · +${x.change} d vs before`} b={inr(x.outstanding)} tone="text-red-600" />)}
         </Panel>
-        <Panel title="Top overdue" testid="dash-overdue" action={<Go to="/reports" />}>
+        <Panel title="Top overdue" testid="dash-overdue" action={<Go to="/reports?tab=followup" />}>
           {d.top_overdue.length === 0 ? <div className="text-[12px] text-slate-400 py-3">Nothing overdue.</div>
             : d.top_overdue.map((x, i) => <Line key={i} a={x.dealer} sub={x.age_90p ? inr(x.age_90p) + ' over 90 days' : ''} b={inr(x.outstanding)} />)}
         </Panel>
-        <Panel title="Scheme achievement this month" testid="dash-scheme-rows" action={<Go to="/reports" label="Tracker" />}>
+        <Panel title="Scheme achievement this month" testid="dash-scheme-rows" action={<Go to="/reports?tab=scheme" label="Tracker" />}>
           {d.schemes.rows.length === 0 ? <div className="text-[12px] text-slate-400 py-3">No schemes set. Add Haier targets in Reports → Scheme tracker.</div>
             : d.schemes.rows.map((x, i) => (
               <div key={i} className="py-2 border-b border-slate-50 last:border-0">
@@ -106,12 +106,12 @@ export default function AdminDashboard() {
           {d.low_stock.length === 0 ? <div className="text-[12px] text-slate-400 py-3">No low-stock alerts.</div>
             : d.low_stock.map((x, i) => <Line key={i} a={x.model} b={x.on_hand + ' left'} sub={x.sold_30d + ' sold in 30 d'} tone={x.on_hand === 0 ? 'text-red-600' : 'text-amber-700'} />)}
         </Panel>
-        <Panel title={`Lost dealers · ${d.inactive.count} inactive 30+ d`} testid="dash-inactive" action={<Go to="/reports" />}>
+        <Panel title={`Lost dealers · ${d.inactive.count} inactive 30+ d`} testid="dash-inactive" action={<Go to="/reports?tab=inactive" />}>
           {d.inactive.rows.length === 0 ? <div className="text-[12px] text-slate-400 py-3">Everyone bought recently.</div>
             : <>{d.inactive.rows.map((x, i) => <Line key={i} a={x.name} sub={`${x.days_since} days since last bill`} b={inr(x.run_rate) + '/mo'} />)}
               {d.inactive.lost_revenue > 0 && <div className="text-[11px] text-red-600 pt-2">≈ {inr(d.inactive.lost_revenue)} revenue lost · {d.inactive.regular_lost} were regular buyers</div>}</>}
         </Panel>
-        <Panel title="Top dealers this month" testid="dash-top-dealers" action={<Go to="/reports" />}>
+        <Panel title="Top dealers this month" testid="dash-top-dealers" action={<Go to={'/reports?tab=sales&from=' + d.date.slice(0, 7) + '-01&to=' + d.date} />}>
           {m.top_dealers.length === 0 ? <div className="text-[12px] text-slate-400 py-3">No sales yet this month.</div>
             : m.top_dealers.map((x, i) => <Line key={i} a={x.dealer} b={inr(x.amount)} />)}
         </Panel>
