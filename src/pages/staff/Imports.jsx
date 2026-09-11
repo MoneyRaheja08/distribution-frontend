@@ -63,8 +63,31 @@ export default function Imports() {
         <SaleImport onImported={bump} />
         <PurchaseImport onImported={bump} />
       </div>
+      <DuplicateCleanup refresh={refresh} onChanged={bump} />
       <RecentImports refresh={refresh} onChanged={bump} />
     </>
+  )
+}
+
+function DuplicateCleanup({ refresh, onChanged }) {
+  const { auth } = useAuth()
+  const [d, setD] = useState(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => { api.duplicateSales().then(setD).catch(() => setD(null)) }, [refresh])
+  if (!d || !d.lines) return null
+  const run = async () => {
+    if (!(await confirmDialog(`Remove ${d.lines} duplicate sale line(s) worth ${inr(d.amount)}? These came from importing the same sale file more than once. The first import is kept; bills and IMEI stock are unaffected.`, { danger: true, confirmLabel: 'Remove duplicates' }))) return
+    setBusy(true)
+    try { const r = await api.removeDuplicateSales(); toast.success(`Removed ${r.removed} duplicate lines (${inr(r.amount)})`); onChanged?.() } catch (e) { toast.error(e.message) } finally { setBusy(false) }
+  }
+  return (
+    <div data-testid="dup-cleanup" className="mt-6 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <div className="text-[14px] font-bold text-amber-900 flex items-center gap-2"><AlertTriangle size={16} /> {d.lines} duplicate sale line(s) · {inr(d.amount)}</div>
+        <div className="text-[12px] text-amber-800 mt-0.5">The same sale file was imported more than once. Reports already ignore these; remove them to keep exports clean.</div>
+      </div>
+      {auth.user.role === 'admin' && <button data-testid="dup-remove" onClick={run} disabled={busy} className="text-[12px] font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg px-3.5 py-2 disabled:opacity-60">{busy ? 'Removing…' : 'Remove duplicates'}</button>}
+    </div>
   )
 }
 

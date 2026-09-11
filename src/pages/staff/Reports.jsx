@@ -343,7 +343,7 @@ function SalesReport({ from, to }) {
     { money: [7, 8], boldRows: [r.rows.length + 1], sheet: 'Sales' })
   return (
     <>
-      <Big label={`Sales · ${tag || 'All'} · ${from} to ${to} · ${r.count} line(s) · ${r.units} IMEI`} value={inr(r.total)} />
+      <Big label={`Sales · ${tag || 'All'} · ${from} to ${to} · ${r.count} line(s) · ${r.units} IMEI${r.duplicates_ignored ? ` · ${r.duplicates_ignored} re-imported duplicates ignored` : ''}`} value={inr(r.total)} />
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <SelPick testid="sales-brand" label="All brands" value={f.brand} onChange={(v) => setFilter('brand', v)} options={opts.brands} />
         <SelPick testid="sales-dealer" label="All dealers" value={f.dealer} onChange={(v) => setFilter('dealer', v)} options={opts.dealers} />
