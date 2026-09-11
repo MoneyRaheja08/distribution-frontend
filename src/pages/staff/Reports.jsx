@@ -575,11 +575,26 @@ function Profit2({ from, to }) {
           <button data-testid="p2-export-pnl" onClick={exportPnl} className="text-[12px] font-semibold text-slate-700 bg-slate-100 rounded-full px-3 py-1.5 flex items-center gap-1"><Download size={13} />P&amp;L</button>
         </div>
       </div>
-      {r.duplicates_ignored > 0 && (
-        <div data-testid="p2-dup-note" className="rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[12px] px-3 py-2 mb-3">
-          {r.duplicates_ignored} re-imported sale line(s) were ignored so revenue isn't double counted.
-        </div>
-      )}
+      {(() => {
+        const q = r.data_check || {}
+        const items = [
+          r.duplicates_ignored > 0 && ['Re-imported duplicate lines ignored', r.duplicates_ignored + ' lines', 'amber'],
+          q.no_date > 0 && ['Sale lines with unreadable date (never counted in any range)', q.no_date + ' lines · ' + inr(q.no_date_amount), 'red'],
+          q.no_brand > 0 && ['Sale lines with blank brand (excluded when a brand is picked)', q.no_brand + ' lines · ' + inr(q.no_brand_amount), 'red'],
+          q.other_brand > 0 && ['Other-brand sales in this range (not ' + label + ')', q.other_brand + ' lines · ' + inr(q.other_brand_amount), 'slate'],
+          q.no_cost_units > 0 && ['Units sold with no purchase cost found (margin overstated)', q.no_cost_units + ' units · ' + inr(q.no_cost_amount), 'red'],
+          q.unmatched_dealer > 0 && ['Sale lines not linked to a dealer (bill not in ledger)', q.unmatched_dealer + ' lines · ' + inr(q.unmatched_dealer_amount), 'amber'],
+          q.stock_units_no_cost > 0 && ['In-stock units with no purchase rate (stock value understated)', q.stock_units_no_cost + ' units', 'amber'],
+        ].filter(Boolean)
+        if (items.length === 0) return <div data-testid="p2-data-ok" className="rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-[12px] px-3 py-2 mb-3">Data check passed — every sale line in range is dated, branded, costed and linked to a dealer.</div>
+        const C = { red: 'text-red-700', amber: 'text-amber-800', slate: 'text-slate-600' }
+        return (
+          <div data-testid="p2-data-check" className="rounded-xl bg-white border border-amber-200 text-[12px] mb-3 overflow-hidden">
+            <div className="px-3 py-2 bg-amber-50 font-bold text-amber-900 text-[11px] uppercase tracking-wide">Data check · what is not in these numbers</div>
+            {items.map(([a, b, t], i) => <div key={i} className="flex justify-between gap-3 px-3 py-1.5 border-t border-slate-50"><span className={C[t]}>{a}</span><span className={'font-bold shrink-0 ' + C[t]}>{b}</span></div>)}
+          </div>
+        )
+      })()}
       <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-5 mb-4 flex flex-wrap items-end gap-6">
         <div className="flex-1 min-w-[160px]">
           <div data-testid="p2-roce" className={'text-5xl font-extrabold tracking-tight ' + (netM < 0 ? 'text-red-600' : 'text-emerald-700')}>{wc > 0 ? Math.round(roce) + '%' : '—'}</div>
