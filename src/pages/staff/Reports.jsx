@@ -529,8 +529,7 @@ function Profit2({ from, to }) {
 
   const days = r.period_days || 30
   const monthK = 30.4 / days                       // period → 30-day equivalent
-  const useReal = r.scheme_count > 0
-  const schemeP = useReal ? r.scheme_earned : r.revenue * scheme / 100
+  const schemeP = r.revenue * scheme / 100
   const opexP = r.revenue * opex / 100
   const payables = r.ann_cogs * payDays / 365
   const wc = Math.max(0, r.stock_value + r.receivables - payables)
@@ -611,8 +610,7 @@ function Profit2({ from, to }) {
 
         <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-5">
           <div className="text-[12px] font-bold text-slate-500 uppercase tracking-wide mb-3">Your assumptions (not in data)</div>
-          {useReal ? <div className="mb-4 text-[12px] text-emerald-800 bg-emerald-50 rounded-lg px-3 py-2">Scheme income uses real earned payouts from the Scheme tracker ({inr(r.scheme_earned)}).</div>
-            : <P2Slider label="Scheme / incentive income" val={scheme} set={setScheme} min={0} max={12} step={0.25} unit="%" hint="Extra % from the brand for targets, displays. Add real targets in Scheme tracker to replace this." />}
+          <P2Slider label="Scheme / incentive income" val={scheme} set={setScheme} min={0} max={12} step={0.25} unit="%" hint="Extra % from the brand for targets, displays." />
           <P2Slider label="Operating cost" val={opex} set={setOpex} min={0} max={6} step={0.25} unit="%" hint="Godown, staff, delivery, damage as % of sales." />
           <P2Slider label="Cost of capital" val={coc} set={setCoc} min={6} max={24} step={0.5} unit="%" hint="Interest on the money you keep locked up." />
           <P2Slider label={(brand || 'Supplier') + ' credit days'} val={payDays} set={setPayDays} min={0} max={45} step={1} unit=" d" hint="How long you get to pay the brand." />
@@ -625,7 +623,7 @@ function Profit2({ from, to }) {
           <div className="text-[11px] text-slate-400">actual period figures</div>
         </div>
         <Row2 a="Gross margin (revenue − cost of goods)" b={'+' + inr(r.gross)} />
-        <Row2 a={useReal ? 'Scheme income (earned from ' + r.scheme_count + ' tracked scheme(s))' : 'Scheme income (' + inr(r.revenue) + ' × ' + scheme + '%)'} b={'+' + inr(Math.round(schemeP))} />
+        <Row2 a={'Scheme income (' + inr(r.revenue) + ' × ' + scheme + '%)'} b={'+' + inr(Math.round(schemeP))} />
         <Row2 a={'Operating cost (' + inr(r.revenue) + ' × ' + opex + '%)'} b={'−' + inr(Math.round(opexP))} />
         <Row2 a={'Financing cost (' + inr(Math.round(wc)) + ' × ' + coc + '% × ' + days + '/365 days)'} b={'−' + inr(Math.round(finP))} />
         <div className="flex justify-between items-baseline pt-3 mt-1 border-t-2 border-slate-800">

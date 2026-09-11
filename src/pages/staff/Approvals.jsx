@@ -26,7 +26,7 @@ export default function Approvals() {
               <div className="flex justify-between items-start gap-3">
                 <div className="min-w-0">
                   <div className="text-[15px] font-semibold truncate">{p.dealer_name}</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">{p.mode}{p.cheque ? ' · ' + p.cheque : ''} · by {p.collector_name} · {p.date}</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">{p.mode}{p.cheque ? ' · ' + p.cheque : ''}{p.cheque_date ? ' · dated ' + p.cheque_date : ''} · by {p.collector_name} · {p.date}</div>
                 </div>
                 <div className="text-[15px] font-bold text-emerald-700 shrink-0">{inr(p.amount)}</div>
               </div>

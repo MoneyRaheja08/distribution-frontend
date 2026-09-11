@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { LogOut, LayoutDashboard, Store, Package, Tag, Wallet, ClipboardList, BarChart3, ClipboardCheck, FileBarChart, Users, ShoppingCart, Moon, Sun, UploadCloud } from 'lucide-react'
+import { LogOut, LayoutDashboard, Gauge, Store, Package, Tag, Wallet, ClipboardList, BarChart3, ClipboardCheck, FileBarChart, Users, ShoppingCart, Moon, Sun, UploadCloud } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
@@ -33,6 +33,7 @@ export default function Shell() {
   let tabs = [...(role === 'collector' ? NAV.collector : NAV.staff)]
   if (role === 'manager') tabs = tabs.filter(([to]) => to !== '/money')  // reconciliation is admin-only
   tabs.splice(tabs.length - 1, 0, ['/prices', 'Prices', Tag])
+  if (role === 'admin' || auth.user.can_view_dashboard) tabs.splice(1, 0, ['/dashboard', 'Dashboard', Gauge])
   if (role === 'admin') tabs.push(['/reconcile', 'Reconcile', ClipboardCheck])
   if (role === 'admin' || auth.user.can_view_reports) tabs.push(['/reports', 'Reports', FileBarChart])
   if (role === 'admin') tabs.push(['/users', 'Users', Users])

@@ -11,6 +11,7 @@ import MyDay from './pages/collector/MyDay.jsx'
 import StockView from './pages/collector/StockView.jsx'
 
 import Dashboard from './pages/staff/Dashboard.jsx'
+import AdminDashboard from './pages/staff/AdminDashboard.jsx'
 import Dealers from './pages/staff/Dealers.jsx'
 import Stock from './pages/staff/Stock.jsx'
 import Money from './pages/staff/Money.jsx'
@@ -37,6 +38,7 @@ export default function App() {
 
   const role = auth.user.role
   const canReports = role === 'admin' || auth.user.can_view_reports
+  const canDash = role === 'admin' || auth.user.can_view_dashboard
 
   return (
     <Routes>
@@ -55,6 +57,7 @@ export default function App() {
         ) : (
           <>
             <Route path="/" element={<Dashboard />} />
+            {canDash && <Route path="/dashboard" element={<AdminDashboard />} />}
             <Route path="/dealers" element={<Dealers />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/stock" element={<Stock />} />

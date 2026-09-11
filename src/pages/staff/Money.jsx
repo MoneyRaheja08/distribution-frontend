@@ -36,7 +36,10 @@ export default function Money() {
     cashByCollector[p.collector_id].amt += p.amount
   })
   const cashRows = Object.values(cashByCollector)
-  const cheques = pays.filter((p) => p.status === 'pending')
+  const cheques = pays.filter((p) => p.status === 'pending').sort((a, b) => ((a.cheque_date || a.date) > (b.cheque_date || b.date) ? 1 : -1))
+  const chequeDue = (p) => !p.cheque_date || p.cheque_date <= todayIso
+  const dueTotal = cheques.filter(chequeDue).reduce((s, p) => s + p.amount, 0)
+  const pdcTotal = cheques.filter((p) => !chequeDue(p)).reduce((s, p) => s + p.amount, 0)
 
   const rec = received || []
   const receivedTotal = rec.reduce((sum, p) => sum + p.amount, 0)
@@ -46,7 +49,7 @@ export default function Money() {
   const isToday = day === todayIso
 
   const deposit = async (cid) => { await api.deposit(cid); loadCore(); loadDay(day); toast.success('Marked deposited') }
-  const chq = async (id, ok) => { await api.cheque(id, ok); loadCore(); loadDay(day); toast.success(ok ? 'Cheque cleared' : 'Cheque bounced') }
+  const chq = async (id, ok) => { try { await api.cheque(id, ok); loadCore(); loadDay(day); toast.success(ok ? 'Cheque cleared' : 'Cheque bounced') } catch (e) { toast.error(e.message) } }
   const reconcile = async (id) => {
     await api.reconcilePayment(id, true)
     setReceived((list) => list.map((p) => (p.id === id ? { ...p, reconciled: true } : p)))
@@ -131,17 +134,18 @@ export default function Money() {
       </div>
 
       {/* Cheques pending */}
-      <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 mb-2.5 px-0.5">Cheques pending clearance</div>
+      <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 mb-2.5 px-0.5">Cheques pending clearance · due {inr(dueTotal)}{pdcTotal > 0 ? ` · post-dated ${inr(pdcTotal)}` : ''}</div>
       <div className="bg-white border border-slate-200/70 rounded-2xl p-4 shadow-soft">
-        {cheques.length === 0 ? <Empty>No cheques pending.</Empty> : cheques.map((p) => (
-          <div key={p.id} className="flex justify-between items-center py-2.5 border-b border-slate-100 last:border-0 text-[13px]">
-            <div className="text-slate-500"><span className="text-slate-900 font-semibold block">{p.dealer_name}</span>{p.cheque || 'cheque'} · {inr(p.amount)}</div>
+        {cheques.length === 0 ? <Empty>No cheques pending.</Empty> : cheques.map((p) => { const due = chequeDue(p); return (
+          <div key={p.id} data-testid="cheque-row" className="flex justify-between items-center py-2.5 border-b border-slate-100 last:border-0 text-[13px]">
+            <div className="text-slate-500"><span className="text-slate-900 font-semibold block">{p.dealer_name}</span>{p.cheque || 'cheque'} · {inr(p.amount)}
+              {p.cheque_date && <span className={'ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ' + (due ? 'bg-emerald-50 text-emerald-700' : 'bg-sky-50 text-sky-700')}>{due ? (p.cheque_date === todayIso ? 'Due today' : 'Due ' + p.cheque_date) : 'Post-dated ' + p.cheque_date}</span>}</div>
             <div className="flex gap-1.5">
-              <button onClick={() => chq(p.id, true)} className="text-[11px] font-semibold text-brand-700 bg-brand-50 ring-1 ring-brand-100 hover:bg-brand-100 rounded-lg px-2.5 py-1 flex items-center gap-1 transition-colors"><Check size={12} />Cleared</button>
+              <button onClick={() => chq(p.id, true)} disabled={!due} title={due ? '' : 'Can be cleared on or after ' + p.cheque_date} className="text-[11px] font-semibold text-brand-700 bg-brand-50 ring-1 ring-brand-100 hover:bg-brand-100 rounded-lg px-2.5 py-1 flex items-center gap-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><Check size={12} />Cleared</button>
               <button onClick={() => chq(p.id, false)} className="text-[11px] font-semibold text-red-700 bg-red-50 ring-1 ring-red-100 hover:bg-red-100 rounded-lg px-2.5 py-1 flex items-center gap-1 transition-colors"><X size={12} />Bounced</button>
             </div>
           </div>
-        ))}
+        ) })}
       </div>
     </>
   )

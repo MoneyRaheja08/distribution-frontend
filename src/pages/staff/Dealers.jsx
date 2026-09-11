@@ -206,7 +206,7 @@ function BillLinesModal({ bill, onClose }) {
   )
 }
 
-function CollectModal({ dealer, outstanding, onClose, onDone }) {  const [f, setF] = useState({ amount: '', mode: 'RTGS', cheque: '' })
+function CollectModal({ dealer, outstanding, onClose, onDone }) {  const [f, setF] = useState({ amount: '', mode: 'RTGS', cheque: '', cheque_date: '' })
   const [busy, setBusy] = useState(false)
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
   const save = async () => {
@@ -215,7 +215,7 @@ function CollectModal({ dealer, outstanding, onClose, onDone }) {  const [f, set
     if (a > outstanding) return toast.error('Amount exceeds outstanding of ' + inr(outstanding))
     if (f.mode === 'Cheque' && !f.cheque.trim()) return toast.error('Enter cheque details')
     setBusy(true)
-    try { await api.collect({ dealer_id: dealer.id, amount: a, mode: f.mode, cheque: f.cheque }); toast.success('Payment recorded'); onDone() }
+    try { await api.collect({ dealer_id: dealer.id, amount: a, mode: f.mode, cheque: f.cheque, cheque_date: f.mode === 'Cheque' ? f.cheque_date || null : null }); toast.success('Payment recorded'); onDone() }
     catch (err) { toast.error(err.message); setBusy(false) }
   }
   return (
@@ -229,6 +229,7 @@ function CollectModal({ dealer, outstanding, onClose, onDone }) {  const [f, set
         ))}
       </div>
       {f.mode === 'Cheque' && <Field label="Cheque no. & bank" value={f.cheque} onChange={(v) => set('cheque', v)} />}
+      {f.mode === 'Cheque' && <Field label="Cheque date (post-dated? enter date on cheque)" value={f.cheque_date} onChange={(v) => set('cheque_date', v)} type="date" />}
       <div className="text-[11px] text-slate-500 mb-3">Applied to oldest dues first.</div>
       <button onClick={save} disabled={busy} className="w-full bg-emerald-700 text-white font-semibold py-3 rounded-xl disabled:opacity-60">Save payment</button>
     </Modal>

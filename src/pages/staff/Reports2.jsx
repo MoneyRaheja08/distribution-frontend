@@ -356,23 +356,29 @@ export function SchemeTracker() {
   const [r, setR] = useState(null)
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7))
   const [open, setOpen] = useState(false)
-  const blank = { brand: '', scope: 'all', scope_value: '', target_qty: '', target_amount: '', payout_pct: '', payout_amount: '', prorata: false, note: '' }
+  const [recv, setRecv] = useState(null)   // scheme being marked received
+  const blank = { basis: 'purchase', brand: '', scope: 'all', scope_value: '', target_qty: '', target_amount: '', payout_pct: '', payout_amount: '', prorata: false, note: '' }
   const [f, setF] = useState(blank)
   const load = () => { setR(null); api.schemesList(month).then(setR) }
   useEffect(load, [month]) // eslint-disable-line
   if (!r) return <SkeletonList rows={5} />
   const save = async () => {
     try {
-      await api.schemeCreate({ month, brand: f.brand, scope: f.scope, scope_value: f.scope_value, target_qty: +f.target_qty || 0, target_amount: +f.target_amount || 0, payout_pct: +f.payout_pct || 0, payout_amount: +f.payout_amount || 0, prorata: f.prorata, note: f.note })
+      await api.schemeCreate({ month, basis: f.basis, brand: f.brand, scope: f.scope, scope_value: f.scope_value, target_qty: +f.target_qty || 0, target_amount: +f.target_amount || 0, payout_pct: +f.payout_pct || 0, payout_amount: +f.payout_amount || 0, prorata: f.prorata, note: f.note })
       toast.success('Scheme added'); setF(blank); setOpen(false); load()
     } catch (e) { toast.error(e.message) }
   }
+  const setStatus = async (x, status, received_amount = 0, received_on = '') => {
+    try { await api.schemeStatus(x.id, { status, received_amount, received_on }); toast.success(status === 'received' ? 'Marked received' : status === 'claimed' ? 'Marked claimed' : 'Reopened'); setRecv(null); load() } catch (e) { toast.error(e.message) }
+  }
   const del = async (id) => { if (!confirm('Remove this scheme?')) return; await api.schemeDelete(id); load() }
   const dl = () => exportSheet('schemes-' + month + '.xlsx',
-    [['Brand', 'Scope', 'Target qty', 'Actual qty', 'Target amount', 'Actual amount', 'Achieved %', 'Payout earned', 'Potential', 'Gap qty', 'Gap amount', 'Note'],
-     ...r.rows.map((x) => [x.brand || 'All', x.scope === 'all' ? 'All models' : x.scope_value, x.target_qty, x.actual_qty, x.target_amount, x.actual_amount, x.achieved_pct, x.earned, x.potential, x.gap_qty, x.gap_amount, x.note])],
-    { money: [4, 5, 7, 8, 10], sheet: 'Schemes' })
+    [['Basis', 'Brand', 'Scope', 'Target qty', 'Actual qty', 'Target amount', 'Actual amount', 'Achieved %', '% income', 'Payout earned', 'Potential', 'Gap qty', 'Gap amount', 'Status', 'Received', 'Received on', 'Note'],
+     ...r.rows.map((x) => [x.basis, x.brand || 'All', x.scope === 'all' ? 'All models' : x.scope_value, x.target_qty, x.actual_qty, x.target_amount, x.actual_amount, x.achieved_pct, x.pct_income, x.earned, x.potential, x.gap_qty, x.gap_amount, x.status, x.received_amount, x.received_on || '', x.note])],
+    { money: [5, 6, 8, 9, 10, 12, 14], sheet: 'Schemes' })
   const inp = 'border border-slate-200 rounded-lg px-2.5 py-2 text-[13px] w-full'
+  const ST = { open: ['slate', 'Open'], claimed: ['amber', 'Claimed'], received: ['green', 'Received'] }
+  const hasTarget = f.target_qty || f.target_amount
   return (
     <>
       <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -381,41 +387,71 @@ export function SchemeTracker() {
         <div className="ml-auto"><ExportBtn onClick={dl} /></div>
       </div>
       {open && (
-        <div className="bg-white border border-emerald-200 rounded-xl p-3.5 mb-3 grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-          <label className="text-[11px] font-semibold text-slate-500">Brand<select className={inp} value={f.brand} onChange={(e) => setF({ ...f, brand: e.target.value })}><option value="">All</option>{r.brands.map((b) => <option key={b}>{b}</option>)}</select></label>
-          <label className="text-[11px] font-semibold text-slate-500">Applies to<select className={inp} value={f.scope} onChange={(e) => setF({ ...f, scope: e.target.value, scope_value: '' })}><option value="all">All models</option><option value="group">Category</option><option value="model">Model</option></select></label>
-          {f.scope !== 'all' && <label className="text-[11px] font-semibold text-slate-500">{f.scope === 'group' ? 'Category' : 'Model'}<select className={inp} value={f.scope_value} onChange={(e) => setF({ ...f, scope_value: e.target.value })}><option value="">Select…</option>{(f.scope === 'group' ? r.groups : r.models).map((g) => <option key={g}>{g}</option>)}</select></label>}
-          <label className="text-[11px] font-semibold text-slate-500">Target qty<input data-testid="scheme-target-qty" className={inp} type="number" value={f.target_qty} onChange={(e) => setF({ ...f, target_qty: e.target.value })} /></label>
-          <label className="text-[11px] font-semibold text-slate-500">Target amount ₹<input className={inp} type="number" value={f.target_amount} onChange={(e) => setF({ ...f, target_amount: e.target.value })} /></label>
-          <label className="text-[11px] font-semibold text-slate-500">Payout % of sales<input data-testid="scheme-payout-pct" className={inp} type="number" step="0.25" value={f.payout_pct} onChange={(e) => setF({ ...f, payout_pct: e.target.value })} /></label>
-          <label className="text-[11px] font-semibold text-slate-500">Flat payout ₹<input className={inp} type="number" value={f.payout_amount} onChange={(e) => setF({ ...f, payout_amount: e.target.value })} /></label>
-          <label className="text-[11px] font-semibold text-slate-500">Note<input className={inp} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="e.g. Sep W/M push" /></label>
-          <label className="text-[12px] text-slate-600 flex items-center gap-2 self-end"><input type="checkbox" checked={f.prorata} onChange={(e) => setF({ ...f, prorata: e.target.checked })} /> Pay pro-rata below target</label>
-          <div className="col-span-full flex gap-2"><button data-testid="scheme-save" onClick={save} className="text-[13px] font-semibold text-white bg-emerald-600 rounded-lg px-4 py-2">Save</button><button onClick={() => setOpen(false)} className="text-[13px] font-semibold text-slate-500 px-3">Cancel</button></div>
+        <div className="bg-white border border-emerald-200 rounded-xl p-3.5 mb-3">
+          <div className="flex gap-2 mb-3">
+            {[['purchase', 'On purchases (what you buy from the brand)'], ['sale', 'On sales (what you sell to dealers)']].map(([k, l]) => (
+              <button key={k} data-testid={'scheme-basis-' + k} onClick={() => setF({ ...f, basis: k })} className={'flex-1 text-[12px] font-semibold px-3 py-2 rounded-lg border ' + (f.basis === k ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500')}>{l}</button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            <label className="text-[11px] font-semibold text-slate-500">Brand<select className={inp} value={f.brand} onChange={(e) => setF({ ...f, brand: e.target.value })}><option value="">All</option>{r.brands.map((b) => <option key={b}>{b}</option>)}</select></label>
+            <label className="text-[11px] font-semibold text-slate-500">Applies to<select className={inp} value={f.scope} onChange={(e) => setF({ ...f, scope: e.target.value, scope_value: '' })}><option value="all">All models</option><option value="group">Category</option><option value="model">Model</option></select></label>
+            {f.scope !== 'all' && <label className="text-[11px] font-semibold text-slate-500">{f.scope === 'group' ? 'Category' : 'Model'}<select className={inp} value={f.scope_value} onChange={(e) => setF({ ...f, scope_value: e.target.value })}><option value="">Select…</option>{(f.scope === 'group' ? r.groups : r.models).map((g) => <option key={g}>{g}</option>)}</select></label>}
+            <label className="text-[11px] font-semibold text-slate-500">Target qty <span className="text-slate-400">(optional)</span><input data-testid="scheme-target-qty" className={inp} type="number" value={f.target_qty} onChange={(e) => setF({ ...f, target_qty: e.target.value })} /></label>
+            <label className="text-[11px] font-semibold text-slate-500">Target amount ₹ <span className="text-slate-400">(optional)</span><input className={inp} type="number" value={f.target_amount} onChange={(e) => setF({ ...f, target_amount: e.target.value })} /></label>
+            <label className="text-[11px] font-semibold text-slate-500">% on {f.basis} value<input data-testid="scheme-payout-pct" className={inp} type="number" step="0.25" value={f.payout_pct} onChange={(e) => setF({ ...f, payout_pct: e.target.value })} placeholder="e.g. 2" /></label>
+            <label className="text-[11px] font-semibold text-slate-500">Flat payout ₹ on target<input className={inp} type="number" value={f.payout_amount} onChange={(e) => setF({ ...f, payout_amount: e.target.value })} /></label>
+            <label className="text-[11px] font-semibold text-slate-500">Note<input className={inp} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="e.g. Sep W/M push" /></label>
+            {hasTarget ? <label className="text-[12px] text-slate-600 flex items-center gap-2 self-end"><input type="checkbox" checked={f.prorata} onChange={(e) => setF({ ...f, prorata: e.target.checked })} /> Pay pro-rata below target</label> : <div className="text-[11px] text-slate-400 self-end">No target → the % simply accrues on every {f.basis}.</div>}
+          </div>
+          <div className="flex gap-2 mt-3"><button data-testid="scheme-save" onClick={save} className="text-[13px] font-semibold text-white bg-emerald-600 rounded-lg px-4 py-2">Save</button><button onClick={() => setOpen(false)} className="text-[13px] font-semibold text-slate-500 px-3">Cancel</button></div>
         </div>
       )}
-      <div className="grid grid-cols-3 gap-3 mb-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
         <Metric label="Earned so far" value={inr(r.earned)} sub={month} tone="text-emerald-700" />
-        <Metric label="Potential" value={inr(r.potential)} sub="if all targets met" />
-        <Metric label="Month progress" value={r.month_progress_pct + '%'} sub="of days elapsed" />
+        <Metric label="To claim" value={inr(r.pending_claim)} sub="earned, not yet claimed" tone={r.pending_claim > 0 ? 'text-amber-700' : 'text-slate-900'} />
+        <Metric label="Received" value={inr(r.received)} sub="credited by brand" />
+        <Metric label="Behind pace" value={r.behind} sub={'month ' + r.month_progress_pct + '% done'} tone={r.behind > 0 ? 'text-red-600' : 'text-emerald-700'} />
       </div>
       <Section title={r.rows.length + ' scheme(s) · achievement vs target'}>
-        {r.rows.length === 0 ? <Row2 a="No schemes for this month — add Haier targets above" b="" /> : r.rows.map((x) => (
-          <div key={x.id} data-testid="scheme-row" className="px-3.5 py-3 border-b border-slate-50 last:border-0">
-            <div className="flex justify-between items-start gap-2">
-              <div className="min-w-0"><div className="text-[14px] font-semibold text-slate-800 truncate">{x.brand || 'All brands'} · {x.scope === 'all' ? 'All models' : x.scope_value}</div>{x.note && <div className="text-[11px] text-slate-400">{x.note}</div>}</div>
-              <div className="text-right shrink-0"><div className={'text-[15px] font-bold ' + (x.met ? 'text-emerald-700' : 'text-slate-700')}>{x.met ? inr(x.earned) : inr(x.potential)}</div><div className="text-[10px] text-slate-400">{x.met ? 'earned' : 'if met'}</div></div>
+        {r.rows.length === 0 ? <Row2 a="No schemes for this month — add Haier targets above" b="" /> : r.rows.map((x) => {
+          const [tone, label] = ST[x.status] || ST.open
+          return (
+            <div key={x.id} data-testid="scheme-row" className="px-3.5 py-3 border-b border-slate-50 last:border-0">
+              <div className="flex justify-between items-start gap-2">
+                <div className="min-w-0">
+                  <div className="text-[14px] font-semibold text-slate-800 truncate">{x.brand || 'All brands'} · {x.scope === 'all' ? 'All models' : x.scope_value}</div>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1"><Tag tone="blue">on {x.basis}s</Tag><Tag tone={tone}>{label}</Tag>{x.behind && <Tag tone="red">Behind pace</Tag>}{x.note && <span className="text-[11px] text-slate-400">{x.note}</span>}</div>
+                </div>
+                <div className="text-right shrink-0"><div className={'text-[15px] font-bold ' + (x.met ? 'text-emerald-700' : 'text-slate-700')}>{x.met ? inr(x.earned) : inr(x.potential)}</div><div className="text-[10px] text-slate-400">{x.met ? 'earned' : 'if target met'}</div></div>
+              </div>
+              {!x.no_target && <>
+                <div className="mt-2"><Bar pct={x.achieved_pct} tone={x.met ? 'bg-emerald-500' : x.behind ? 'bg-red-400' : 'bg-sky-500'} /></div>
+                <div className="flex justify-between text-[11px] text-slate-500 mt-1">
+                  <span><b className="text-slate-800">{x.achieved_pct}%</b>{x.target_qty ? ` · ${x.actual_qty}/${x.target_qty} units` : ''}{x.target_amount ? ` · ${inr(x.actual_amount)}/${inr(x.target_amount)}` : ''}</span>
+                  <span>{x.met ? <Tag tone="green">Target met</Tag> : <>need {x.gap_qty ? x.gap_qty + ' more units' : inr(x.gap_amount) + ' more'}</>}</span>
+                </div>
+              </>}
+              <div className="text-[11px] text-slate-500 mt-1">{x.basis === 'purchase' ? 'Purchased' : 'Sold'} {inr(x.actual_amount)} · {x.actual_qty} units{x.payout_pct ? <> · <b className="text-slate-700">{x.payout_pct}% = {inr(x.pct_income)}</b></> : ''}{x.payout_amount ? ` · flat ${inr(x.payout_amount)}` : ''}{x.status === 'received' ? <> · received <b className="text-emerald-700">{inr(x.received_amount)}</b> on {x.received_on}</> : ''}</div>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {x.status === 'open' && <button data-testid="scheme-claim" onClick={() => setStatus(x, 'claimed')} className="text-[11px] font-semibold text-amber-800 bg-amber-50 rounded-full px-2.5 py-1">Mark claimed</button>}
+                {x.status !== 'received' && <button data-testid="scheme-receive" onClick={() => setRecv({ id: x.id, amount: x.earned || x.pct_income, on: new Date().toISOString().slice(0, 10) })} className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 rounded-full px-2.5 py-1">Mark received</button>}
+                {x.status !== 'open' && <button onClick={() => setStatus(x, 'open')} className="text-[11px] font-semibold text-slate-500 bg-slate-100 rounded-full px-2.5 py-1">Reopen</button>}
+                <button onClick={() => del(x.id)} className="text-[11px] text-red-500 ml-auto">Remove</button>
+              </div>
+              {recv && recv.id === x.id && (
+                <div className="mt-2 flex flex-wrap items-end gap-2 bg-emerald-50 border border-emerald-100 rounded-lg p-2.5">
+                  <label className="text-[11px] font-semibold text-slate-600">Amount received ₹<input data-testid="scheme-recv-amount" type="number" className={inp} value={recv.amount} onChange={(e) => setRecv({ ...recv, amount: e.target.value })} /></label>
+                  <label className="text-[11px] font-semibold text-slate-600">On<input type="date" className={inp} value={recv.on} onChange={(e) => setRecv({ ...recv, on: e.target.value })} /></label>
+                  <button data-testid="scheme-recv-save" onClick={() => setStatus(x, 'received', +recv.amount || 0, recv.on)} className="text-[12px] font-semibold text-white bg-emerald-600 rounded-lg px-3 py-2">Save</button>
+                  <button onClick={() => setRecv(null)} className="text-[12px] text-slate-500 px-2">Cancel</button>
+                </div>
+              )}
             </div>
-            <div className="mt-2"><Bar pct={x.achieved_pct} tone={x.met ? 'bg-emerald-500' : x.achieved_pct >= r.month_progress_pct ? 'bg-sky-500' : 'bg-amber-400'} /></div>
-            <div className="flex justify-between text-[11px] text-slate-500 mt-1">
-              <span><b className="text-slate-800">{x.achieved_pct}%</b>{x.target_qty ? ` · ${x.actual_qty}/${x.target_qty} units` : ''}{x.target_amount ? ` · ${inr(x.actual_amount)}/${inr(x.target_amount)}` : ''}</span>
-              <span>{x.met ? <Tag tone="green">Target met</Tag> : <>need {x.gap_qty ? x.gap_qty + ' more units' : inr(x.gap_amount) + ' more'}</>}</span>
-            </div>
-            <button onClick={() => del(x.id)} className="text-[11px] text-red-500 mt-1.5">Remove</button>
-          </div>
-        ))}
+          )
+        })}
       </Section>
-      <div className="text-[11px] text-slate-400">Earned schemes feed into Profit 2 automatically (replaces the scheme % slider when present).</div>
+      <div className="text-[11px] text-slate-400">Achievement is measured on your imported {'{'}purchase / sale{'}'} files for the month. A % with no target accrues on every unit; "Behind pace" means achievement is more than 5 points below the share of the month elapsed.</div>
     </>
   )
 }

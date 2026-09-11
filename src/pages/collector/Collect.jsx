@@ -12,6 +12,7 @@ export default function Collect() {
   const [amt, setAmt] = useState('')
   const [mode, setMode] = useState('Cash')
   const [cheque, setCheque] = useState('')
+  const [chequeDate, setChequeDate] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [receipt, setReceipt] = useState(null)
@@ -28,7 +29,7 @@ export default function Collect() {
     if (mode === 'Cheque' && !cheque.trim()) return setErr('Enter cheque number and bank')
     setBusy(true); setErr('')
     try {
-      const rc = await api.collect({ dealer_id: d.id, amount: a, mode, cheque })
+      const rc = await api.collect({ dealer_id: d.id, amount: a, mode, cheque, cheque_date: mode === 'Cheque' ? chequeDate || null : null })
       setReceipt(rc)
     } catch (e) { setErr(e.message); setBusy(false) }
   }
@@ -70,6 +71,7 @@ export default function Collect() {
           </div>
         </div>
         {mode === 'Cheque' && <Field label="Cheque no. & bank" value={cheque} onChange={setCheque} placeholder="004521 · PNB" />}
+        {mode === 'Cheque' && <div><Field label="Cheque date (leave blank if today)" value={chequeDate} onChange={setChequeDate} type="date" /><div className="text-[11px] text-slate-500 dark:text-slate-400 -mt-2">Post-dated cheque? Enter the date written on it — it can only be cleared on or after that day.</div></div>}
         <div className="text-[11px] text-slate-500 dark:text-slate-400">Applied to oldest dues first. Cheques stay pending until cleared.</div>
         {err && <div className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl px-3 py-2 animate-fade-in">{err}</div>}
         <button onClick={save} disabled={busy}

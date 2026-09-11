@@ -58,7 +58,7 @@ export default function Imports() {
   return (
     <>
       <h1 className="font-display text-2xl font-bold tracking-tight mb-1">Imports</h1>
-      <p className="text-[13px] text-slate-500 mb-6 max-w-xl">Import MARG <b>Sale</b> &amp; <b>Purchase</b> CSVs. The brand is read from the file, so any brand works — with or without IMEI/serial numbers.</p>
+      <p className="text-[13px] text-slate-500 mb-6 max-w-xl">Import MARG <b>Sale</b> &amp; <b>Purchase</b> files (CSV, XLS or XLSX). The brand is read from the file, so any brand works — with or without IMEI/serial numbers.</p>
       <div className="grid gap-4 lg:grid-cols-2">
         <SaleImport onImported={bump} />
         <PurchaseImport onImported={bump} />
@@ -109,7 +109,7 @@ function Dropzone({ testid, onFile, busy, icon: Icon, title, hint }) {
   const pick = (e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = '' }
   return (
     <label className="group flex flex-col items-center justify-center text-center border-2 border-dashed border-slate-200 hover:border-brand-400 rounded-2xl py-8 px-4 cursor-pointer bg-slate-50/60 hover:bg-brand-50/40 transition-colors">
-      <input data-testid={testid} type="file" accept=".csv,.txt,text/csv,application/vnd.ms-excel,application/csv" onChange={pick} className="hidden" disabled={busy} />
+      <input data-testid={testid} type="file" accept=".csv,.txt,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/csv" onChange={pick} className="hidden" disabled={busy} />
       <div className="w-12 h-12 rounded-2xl bg-brand-50 ring-1 ring-brand-100 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
         {busy ? <Loader2 size={22} className="text-brand-600 animate-spin" /> : <Icon size={22} className="text-brand-600" />}
       </div>
@@ -182,7 +182,7 @@ function SaleImport({ onImported }) {
           `${done.units_sold} unit(s) marked sold${done.qty_sold ? ` · ${done.qty_sold} qty` : ''}`,
         ]} />
       ) : (
-        <Dropzone testid="sale-file-input" onFile={onFile} busy={busy} icon={UploadCloud} title="Choose Sale CSV" hint="e.g. SALE HAIER.csv" />
+        <Dropzone testid="sale-file-input" onFile={onFile} busy={busy} icon={UploadCloud} title="Choose Sale file" hint="CSV / XLS / XLSX · e.g. SALE HAIER.xlsx" />
       )}
       {err && <ErrBox msg={err} onRetry={() => setErr(null)} />}
       {pv && <SalePreview pv={pv} busy={busy} fmt={dfmt} setFmt={setDfmt} onClose={() => setPv(null)} onConfirm={commit} />}
@@ -253,7 +253,7 @@ function PurchaseImport({ onImported }) {
           `${done.duplicates} duplicate IMEI(s) skipped`,
         ].filter(Boolean)} />
       ) : (
-        <Dropzone testid="purchase-file-input" onFile={onFile} busy={busy} icon={FileSpreadsheet} title="Choose Purchase CSV" hint="e.g. PURCHASE HAIER.csv" />
+        <Dropzone testid="purchase-file-input" onFile={onFile} busy={busy} icon={FileSpreadsheet} title="Choose Purchase file" hint="CSV / XLS / XLSX · e.g. PURCHASE HAIER.xlsx" />
       )}
       {err && <ErrBox msg={err} onRetry={() => setErr(null)} />}
       {pv && <PurchasePreview pv={pv} busy={busy} fmt={dfmt} setFmt={setDfmt} onClose={() => setPv(null)} onConfirm={commit} />}
