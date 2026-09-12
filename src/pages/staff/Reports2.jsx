@@ -357,14 +357,14 @@ export function SchemeTracker() {
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7))
   const [open, setOpen] = useState(false)
   const [recv, setRecv] = useState(null)   // scheme being marked received
-  const blank = { basis: 'purchase', brand: '', scope: 'all', scope_value: '', target_qty: '', target_amount: '', payout_pct: '', payout_amount: '', prorata: false, note: '' }
+  const blank = { basis: 'purchase', brand: '', scope: 'all', scope_value: '', target_qty: '', target_amount: '', payout_pct: '', payout_amount: '', prorata: false, note: '', custom: false, date_from: '', date_to: '' }
   const [f, setF] = useState(blank)
   const load = () => { setR(null); api.schemesList(month).then(setR) }
   useEffect(load, [month]) // eslint-disable-line
   if (!r) return <SkeletonList rows={5} />
   const save = async () => {
     try {
-      await api.schemeCreate({ month, basis: f.basis, brand: f.brand, scope: f.scope, scope_value: f.scope_value, target_qty: +f.target_qty || 0, target_amount: +f.target_amount || 0, payout_pct: +f.payout_pct || 0, payout_amount: +f.payout_amount || 0, prorata: f.prorata, note: f.note })
+      await api.schemeCreate({ month, date_from: f.custom ? f.date_from : '', date_to: f.custom ? f.date_to : '', basis: f.basis, brand: f.brand, scope: f.scope, scope_value: f.scope_value, target_qty: +f.target_qty || 0, target_amount: +f.target_amount || 0, payout_pct: +f.payout_pct || 0, payout_amount: +f.payout_amount || 0, prorata: f.prorata, note: f.note })
       toast.success('Scheme added'); setF(blank); setOpen(false); load()
     } catch (e) { toast.error(e.message) }
   }
@@ -392,6 +392,11 @@ export function SchemeTracker() {
             {[['purchase', 'On purchases (what you buy from the brand)'], ['sale', 'On sales (what you sell to dealers)']].map(([k, l]) => (
               <button key={k} data-testid={'scheme-basis-' + k} onClick={() => setF({ ...f, basis: k })} className={'flex-1 text-[12px] font-semibold px-3 py-2 rounded-lg border ' + (f.basis === k ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500')}>{l}</button>
             ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-3 mb-3 text-[12px]">
+            <label className="flex items-center gap-2 text-slate-600"><input type="checkbox" data-testid="scheme-custom" checked={f.custom} onChange={(e) => setF({ ...f, custom: e.target.checked })} /> Custom period (not the whole month)</label>
+            {f.custom && <><input data-testid="scheme-from" type="date" value={f.date_from} onChange={(e) => setF({ ...f, date_from: e.target.value })} className="border border-slate-200 rounded-lg px-2 py-1.5" /><span className="text-slate-400">to</span><input data-testid="scheme-to" type="date" value={f.date_to} onChange={(e) => setF({ ...f, date_to: e.target.value })} className="border border-slate-200 rounded-lg px-2 py-1.5" /></>}
+            {!f.custom && <span className="text-slate-400">Runs for the full month {month}</span>}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <label className="text-[11px] font-semibold text-slate-500">Brand<select className={inp} value={f.brand} onChange={(e) => setF({ ...f, brand: e.target.value })}><option value="">All</option>{r.brands.map((b) => <option key={b}>{b}</option>)}</select></label>
@@ -421,7 +426,7 @@ export function SchemeTracker() {
               <div className="flex justify-between items-start gap-2">
                 <div className="min-w-0">
                   <div className="text-[14px] font-semibold text-slate-800 truncate">{x.brand || 'All brands'} · {x.scope === 'all' ? 'All models' : x.scope_value}</div>
-                  <div className="flex flex-wrap items-center gap-1.5 mt-1"><Tag tone="blue">on {x.basis}s</Tag><Tag tone={tone}>{label}</Tag>{x.behind && <Tag tone="red">Behind pace</Tag>}{x.note && <span className="text-[11px] text-slate-400">{x.note}</span>}</div>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1"><Tag tone="blue">on {x.basis}s</Tag>{x.date_from && <Tag tone="slate">{x.period_from} → {x.period_to}</Tag>}<Tag tone={tone}>{label}</Tag>{x.behind && <Tag tone="red">Behind pace</Tag>}{x.note && <span className="text-[11px] text-slate-400">{x.note}</span>}</div>
                 </div>
                 <div className="text-right shrink-0"><div className={'text-[15px] font-bold ' + (x.met ? 'text-emerald-700' : 'text-slate-700')}>{x.met ? inr(x.earned) : inr(x.potential)}</div><div className="text-[10px] text-slate-400">{x.met ? 'earned' : 'if target met'}</div></div>
               </div>
@@ -557,6 +562,55 @@ export function DailySales({ initial }) {
           </div>
         ))}
       </Section>
+    </>
+  )
+}
+
+// 15. Purchases report
+export function PurchasesReport({ from, to }) {
+  const [r, setR] = useState(null)
+  const [f, setF] = useState({ brand: '', supplier: '', model: '', group: '' })
+  const [opts, setOpts] = useState({ brands: [], suppliers: [], models: [], groups: [] })
+  const [view, setView] = useState('bills')
+  useEffect(() => { setR(null); api.reportPurchases(from, to, f).then((x) => { setR(x); setOpts({ brands: x.brands, suppliers: x.suppliers, models: x.models, groups: x.groups }) }) }, [from, to, f])
+  if (!r) return <SkeletonList rows={5} />
+  const setFilter = (k, v) => setF({ ...f, [k]: v })
+  const tag = [f.brand, f.supplier, f.group, f.model].filter(Boolean).join(' · ')
+  const dl = () => exportSheet('purchases-' + (tag || 'all').replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '.xlsx',
+    [['Date', 'Bill', 'Supplier', 'Brand', 'Category', 'Model', 'IMEI', 'Qty', 'Rate', 'Amount', 'Sold?'],
+     ...r.rows.map((x) => [x.date, x.bill_no, x.supplier, x.brand, x.group, x.model, x.imei, x.qty, x.rate, x.amount, x.sold ? 'Yes' : '']),
+     ['Total', '', '', '', '', '', '', r.units, '', r.total, '']],
+    { money: [8, 9], boldRows: [r.rows.length + 1], sheet: 'Purchases' })
+  const dlModel = () => exportSheet('purchases-by-model.xlsx', [['Model', 'Brand', 'Qty', 'Avg rate', 'Amount', 'Sold'], ...r.by_model.map((x) => [x.model, x.brand, x.qty, x.avg_rate, x.amount, x.sold])], { money: [3, 4], sheet: 'By model' })
+  return (
+    <>
+      <Big label={`Purchases · ${tag || 'All'} · ${from} to ${to} · ${r.bills} bills · ${r.count} lines`} value={inr(r.total)} />
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <SelPick testid="pur-brand" label="All brands" value={f.brand} onChange={(v) => setFilter('brand', v)} options={opts.brands} />
+        <SelPick testid="pur-supplier" label="All suppliers" value={f.supplier} onChange={(v) => setFilter('supplier', v)} options={opts.suppliers} />
+        <SelPick testid="pur-group" label="All categories" value={f.group} onChange={(v) => setFilter('group', v)} options={opts.groups} />
+        <SelPick testid="pur-model" label="All models" value={f.model} onChange={(v) => setFilter('model', v)} options={opts.models} />
+        {tag && <button onClick={() => setF({ brand: '', supplier: '', model: '', group: '' })} className="text-[12px] font-semibold text-slate-500 underline">Clear</button>}
+        <div className="ml-auto"><ExportBtn onClick={dl} /></div>
+      </div>
+      <div className="grid grid-cols-3 gap-3 mb-3">
+        <Metric label="Units bought" value={r.units} sub={r.count + ' lines'} />
+        <Metric label="Suppliers" value={r.by_supplier.length} sub={r.by_supplier[0] ? r.by_supplier[0].supplier : ''} />
+        <Metric label="Categories" value={r.by_group.length} sub={r.by_group[0] ? r.by_group[0].group + ' ' + inr(r.by_group[0].amount) : ''} />
+      </div>
+      <div className="flex gap-1.5 mb-3">
+        {[['bills', 'By bill'], ['supplier', 'By supplier'], ['model', 'By model'], ['group', 'By category'], ['lines', 'All lines']].map(([k, l]) => (
+          <button key={k} data-testid={'pur-view-' + k} onClick={() => setView(k)} className={'text-[12px] font-semibold px-3 py-1.5 rounded-full border ' + (view === k ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500')}>{l}</button>
+        ))}
+      </div>
+      {view === 'bills' && <Section title={r.by_bill.length + ' purchase bills'}>{r.by_bill.length === 0 ? <Row2 a="No purchases in range" b="" /> : r.by_bill.map((b, i) => (
+        <div key={i} data-testid="pur-bill" className="px-3.5 py-2.5 border-b border-slate-50 last:border-0 flex justify-between text-[13px]"><div><div className="font-semibold text-slate-800">{b.bill_no} <span className="text-slate-400 font-normal">· {b.date}</span></div><div className="text-[11px] text-slate-500">{b.supplier} · {b.qty} units · {b.lines} lines</div></div><span className="font-bold shrink-0">{inr(b.amount)}</span></div>))}</Section>}
+      {view === 'supplier' && <Section title="By supplier">{r.by_supplier.map((x, i) => <Row2 key={i} a={`${x.supplier} · ${x.bills} bills · ${x.qty} units`} b={inr(x.amount)} bold />)}</Section>}
+      {view === 'model' && <Section title="By model" action={<ExportBtn onClick={dlModel} />}>{r.by_model.map((x, i) => (
+        <div key={i} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0"><div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{x.model}</span><span className="font-bold shrink-0">{inr(x.amount)}</span></div><div className="text-[11px] text-slate-500 mt-0.5">{x.brand} · {x.qty} bought @ avg {inr(x.avg_rate)} · {x.sold} sold · {x.qty - x.sold} in stock</div></div>))}</Section>}
+      {view === 'group' && <Section title="By category">{r.by_group.map((x, i) => <Row2 key={i} a={`${x.group} · ${x.qty} units`} b={inr(x.amount)} bold />)}</Section>}
+      {view === 'lines' && <Section title={'Lines · ' + r.rows.length}>{r.rows.slice(0, 500).map((x, i) => (
+        <div key={i} className="px-3.5 py-2 border-b border-slate-50 last:border-0"><div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{x.model}</span><span className="font-bold shrink-0">{inr(x.amount)}</span></div><div className="text-[10px] text-slate-400">{x.date} · {x.bill_no} · {x.supplier}{x.imei ? ` · ${x.imei}` : ` · qty ${x.qty}`}{x.sold ? ' · sold' : ''}</div></div>))}</Section>}
     </>
   )
 }

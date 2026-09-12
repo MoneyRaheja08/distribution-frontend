@@ -22,11 +22,24 @@ export default function Shell() {
   const [refreshing, setRefreshing] = useState(false)
   const [pull, setPull] = useState(0)
   const [dark, setDark] = useState(isDark())
-  const startY = useRef(0); const pulling = useRef(false)
-  const doRefresh = () => { setRefreshing(true); setRefreshKey((k) => k + 1); setTimeout(() => setRefreshing(false), 700) }
-  const onTS = (e) => { const el = e.currentTarget; if (el.scrollTop <= 0) { startY.current = e.touches[0].clientY; pulling.current = true } }
-  const onTM = (e) => { if (!pulling.current) return; const dy = e.touches[0].clientY - startY.current; if (dy > 0) setPull(Math.min(dy * 0.4, 120)) }
-  const onTE = () => { if (!pulling.current) return; pulling.current = false; if (pull >= 90) doRefresh(); setPull(0) }
+  const startY = useRef(0); const startX = useRef(0); const pulling = useRef(false); const armedAt = useRef(0)
+  const PULL_MAX = 140, PULL_ARM = 110, HOLD_MS = 350       // ~370px of finger travel, then hold briefly
+  const onTS = (e) => { const el = e.currentTarget; if (el.scrollTop <= 0) { startY.current = e.touches[0].clientY; startX.current = e.touches[0].clientX; pulling.current = true; armedAt.current = 0 } }
+  const onTM = (e) => {
+    if (!pulling.current) return
+    const dy = e.touches[0].clientY - startY.current, dx = Math.abs(e.touches[0].clientX - startX.current)
+    if (dy < 24 || dx > dy * 0.6) { if (dy <= 0) pulling.current = false; setPull(0); return }   // ignore small / sideways drags
+    const p = Math.min((dy - 24) * 0.3, PULL_MAX)
+    setPull(p)
+    if (p >= PULL_ARM) { if (!armedAt.current) armedAt.current = Date.now() } else armedAt.current = 0
+  }
+  const onTE = () => {
+    if (!pulling.current) return
+    pulling.current = false
+    const held = armedAt.current && Date.now() - armedAt.current >= HOLD_MS
+    if (pull >= PULL_ARM && held) doRefresh()
+    setPull(0); armedAt.current = 0
+  }
   const onToggleTheme = () => setDark(toggleTheme())
   const role = auth.user.role
   const showTheme = role === 'collector'
@@ -107,7 +120,7 @@ export default function Shell() {
         <div className="flex min-h-0 flex-1 flex-col">
           <main onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE} className="flex-1 overflow-y-auto p-4 pb-28 lg:px-8 lg:py-8 lg:pb-8">
             <div className="flex items-end justify-center overflow-hidden lg:hidden" style={{ height: pull }}>
-              {(pull > 0 || refreshing) && <RefreshCw size={20} className={'text-brand-500 mb-1 ' + (refreshing || pull >= 90 ? 'animate-spin' : '')} />}
+              {(pull > 0 || refreshing) && <div className="flex flex-col items-center mb-1"><RefreshCw size={20} className={'text-brand-500 transition-transform ' + (refreshing || pull >= PULL_ARM ? 'animate-spin' : '')} style={{ transform: `rotate(${pull * 2}deg)` }} /><span className="text-[10px] font-semibold text-slate-400 mt-1">{refreshing ? 'Refreshing…' : pull >= PULL_ARM ? 'Hold… then release' : 'Pull further to refresh'}</span></div>}
             </div>
             <div className="mx-auto w-full max-w-2xl lg:max-w-4xl">
               <div className="flex items-center justify-end -mb-1">
