@@ -11,13 +11,13 @@ import { toast } from '../../lib/toast.js'
 import { useAuth } from '../../auth/AuthContext.jsx'
 import { Spin, BackBtn, Card, SkeletonList } from '../../components/ui.jsx'
 import { Big, ExportBtn, Section, Row2, Metric, FilterBar, Search, Pick, SelPick } from '../../components/reportBits.jsx'
-import { DealerScorecard, CreditTrend, InactiveDealers, MonthOnMonth, CategoryMix, PriceRealisation, CashFlow, CollectorEfficiency, SchemeTracker, Digest, DailySales, PurchasesReport } from './Reports2.jsx'
+import { DealerScorecard, CreditTrend, InactiveDealers, MonthOnMonth, CategoryMix, PriceRealisation, CashFlow, CollectorEfficiency, SchemeTracker, Digest, DailySales } from './Reports2.jsx'
 
 const monthStart = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01` }
 const today = () => new Date().toISOString().slice(0, 10)
 const GROUPS = [
   ['Collect', [['followup', 'Follow-up'], ['beat', 'Beat sheet'], ['collections', 'Collections'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['cashflow', 'Cash forecast'], ['colleff', 'Collector efficiency']]],
-  ['Sales', [['daily', 'Daily sales'], ['sales', 'Dealer × Model'], ['purchasesr', 'Purchases'], ['mom', 'Month vs month'], ['catmix', 'Category mix'], ['price', 'Price realisation'], ['inactive', 'Lost dealers'], ['billspdf', 'PDF bills'], ['purchases', 'Brand buys']]],
+  ['Sales', [['daily', 'Daily sales'], ['sales', 'Dealer × Model'], ['mom', 'Month vs month'], ['catmix', 'Category mix'], ['price', 'Price realisation'], ['inactive', 'Lost dealers'], ['billspdf', 'PDF bills'], ['purchases', 'Brand buys']]],
   ['Profit', [['profit', 'Profit'], ['profit2', 'Profit 2 · Real'], ['scheme', 'Scheme tracker'], ['dscore', 'Dealer scorecard'], ['trend', 'Credit trend'], ['scorecard', 'Brand scorecard'], ['top', 'Top performers'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']]],
   ['Daily', [['digest', 'WhatsApp digest']]],
 ]
@@ -31,21 +31,13 @@ export default function Reports() {
   const setTab = (k) => setSp({ tab: k }, { replace: true })
   const [from, setFrom] = useState(sp.get('from') || monthStart())
   const [to, setTo] = useState(sp.get('to') || today())
-  const { auth } = useAuth()
-  const u = auth.user
-  const isAdmin = u.role === 'admin'
-  const can = { sales: isAdmin || !!u.can_view_sales, profit: isAdmin || !!u.can_view_profit, digest: isAdmin || !!u.can_view_digest }
-  const groups = GROUPS.filter(([g]) => g === 'Collect' || (g === 'Sales' && can.sales) || (g === 'Profit' && can.profit) || (g === 'Daily' && can.digest))
-  const allowed = new Set(groups.flatMap(([, tabs]) => tabs.map(([k]) => k)))
-  useEffect(() => { if (!allowed.has(tab)) setTab('collections') }, [tab]) // eslint-disable-line
-  if (!allowed.has(tab)) return null
 
   return (
     <>
       <BackBtn label="Overview" />
       <div className="text-xs font-bold text-slate-600 mb-2.5 px-0.5">Reports</div>
 
-      {groups.map(([g, tabs]) => (
+      {GROUPS.map(([g, tabs]) => (
         <div key={g} className="flex items-center gap-1.5 mb-2 overflow-x-auto">
           <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400 w-16 shrink-0">{g}</span>
           {tabs.map(([k, l]) => (
@@ -91,7 +83,6 @@ export default function Reports() {
       {tab === 'scheme' && <SchemeTracker />}
       {tab === 'digest' && <Digest />}
       {tab === 'daily' && <DailySales initial={sp.get('day')} />}
-      {tab === 'purchasesr' && <PurchasesReport from={from} to={to} />}
     </>
   )
 }
@@ -229,11 +220,8 @@ function Activity({ from, to }) {
 
 function TopPerformers({ from, to }) {
   const [r, setR] = useState(null)
-  const [f, setF] = useState({ brand: '', group: '', dealer: '', limit: 10 })
-  const [opts, setOpts] = useState({ brands: [], groups: [], dealers: [] })
-  useEffect(() => { setR(null); api.reportTopPerformers(from, to, f).then((x) => { setR(x); setOpts({ brands: x.brands || [], groups: x.groups || [], dealers: x.dealers || [] }) }) }, [from, to, f])
+  useEffect(() => { setR(null); api.reportTopPerformers(from, to).then(setR) }, [from, to])
   if (!r) return <SkeletonList rows={5} />
-  const setFilter = (k, v) => setF({ ...f, [k]: v })
   const Rank = ({ i, a, sub, amt }) => (
     <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-slate-50 last:border-0 text-[13px]">
       <span className="w-5 text-center font-display font-bold text-slate-300">{i + 1}</span>
@@ -243,14 +231,7 @@ function TopPerformers({ from, to }) {
   )
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <SelPick testid="top-brand" label="All brands" value={f.brand} onChange={(v) => setFilter('brand', v)} options={opts.brands} />
-        <SelPick testid="top-group" label="All categories" value={f.group} onChange={(v) => setFilter('group', v)} options={opts.groups} />
-        <SelPick testid="top-dealer" label="All dealers" value={f.dealer} onChange={(v) => setFilter('dealer', v)} options={opts.dealers} />
-        <select data-testid="top-limit" value={f.limit} onChange={(e) => setFilter('limit', +e.target.value)} className="border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-[12px] font-semibold text-slate-700">{[5, 10, 20, 50].map((n) => <option key={n} value={n}>Top {n}</option>)}</select>
-        {(f.brand || f.group || f.dealer) && <button onClick={() => setF({ ...f, brand: '', group: '', dealer: '' })} className="text-[12px] font-semibold text-slate-500 underline">Clear</button>}
-      </div>
-      <div className="text-[12px] text-slate-500 mb-3 px-0.5">Best performers · {[f.brand, f.group, f.dealer].filter(Boolean).join(' · ') || 'All'} · {from} → {to}</div>
+      <div className="text-[12px] text-slate-500 mb-3 px-0.5">Best performers · {from} → {to}</div>
       <Section title="Top SKUs" action={<ExportBtn onClick={() => exportSheet('top-skus.xlsx', [['Model', 'Brand', 'Qty', 'Amount'], ...r.top_skus.map((x) => [x.model, x.brand, x.qty, x.amount])], { money: [3], sheet: 'SKUs' })} />}>
         {r.top_skus.length === 0 ? <Row2 a="No sales in range" b="" /> : r.top_skus.map((x, i) => <Rank key={i} i={i} a={x.model} sub={`${x.brand} · ${x.qty} sold`} amt={x.amount} />)}
       </Section>
