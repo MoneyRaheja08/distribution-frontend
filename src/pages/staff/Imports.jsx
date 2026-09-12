@@ -274,6 +274,7 @@ function PurchaseImport({ onImported }) {
           `${done.units_added} IMEI unit(s) added to stock`,
           done.qty_added ? `${done.qty_added} qty added (non-IMEI models)` : null,
           `${done.duplicates} duplicate IMEI(s) skipped`,
+          done.skipped_already_imported ? `${done.skipped_already_imported} line(s) already imported earlier — skipped` : null,
         ].filter(Boolean)} />
       ) : (
         <Dropzone testid="purchase-file-input" onFile={onFile} busy={busy} icon={FileSpreadsheet} title="Choose Purchase file" hint="CSV / XLS / XLSX · e.g. PURCHASE HAIER.xlsx" />
@@ -306,7 +307,8 @@ function PurchasePreview({ pv, busy, fmt, setFmt, onClose, onConfirm }) {
           </div>
         ))}
       </div>
-      <button data-testid="purchase-confirm-btn" onClick={onConfirm} disabled={busy || (s.imei_units === 0 && s.qty_only === 0)}
+      {s.already_imported_lines > 0 && <div className="flex items-start gap-2 mt-3 text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2"><AlertTriangle size={15} className="mt-0.5 shrink-0" /><span><b>{s.already_imported_lines}</b> line(s) worth <b>{inr(s.already_imported_amount)}</b> are already imported{s.already_imported_bills?.length ? ` (bills ${s.already_imported_bills.slice(0, 4).join(', ')}${s.already_imported_bills.length > 4 ? '…' : ''})` : ''} and will be skipped. {s.new_lines === 0 ? 'Nothing new in this file.' : `${s.new_lines} new line(s) will be added.`}</span></div>}
+      <button data-testid="purchase-confirm-btn" onClick={onConfirm} disabled={busy || (s.imei_units === 0 && s.qty_only === 0) || s.new_lines === 0}
         className="w-full mt-4 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors">
         {busy ? <Loader2 size={16} className="animate-spin" /> : <PackagePlus size={16} />}Add {s.imei_units || s.qty_only} to stock
       </button>
