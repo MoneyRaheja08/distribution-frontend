@@ -240,13 +240,14 @@ function DealerForm({ dealer, collectors, onClose, onSaved }) {
   const [f, setF] = useState({
     name: dealer.name || '', area: dealer.area || '', phone: dealer.phone || '',
     credit_limit: dealer.credit_limit || '', collector_id: dealer.collector_id || '', opening_balance: '',
+    show_on_overview: dealer.show_on_overview !== false,
   })
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
   const save = async () => {
     if (!f.name.trim()) return toast.error('Name is required')
     await api.saveDealer({
       id: dealer.id, name: f.name.trim(), area: f.area, phone: f.phone,
-      credit_limit: +f.credit_limit || 0, collector_id: f.collector_id || null,
+      credit_limit: +f.credit_limit || 0, collector_id: f.collector_id || null, show_on_overview: f.show_on_overview,
       ...(dealer.id ? {} : { opening_balance: +f.opening_balance || 0 }),
     })
     onSaved()
@@ -258,11 +259,21 @@ function DealerForm({ dealer, collectors, onClose, onSaved }) {
         <Field label="Area" value={f.area} onChange={(v) => set('area', v)} />
         <Field label="Phone" value={f.phone} onChange={(v) => set('phone', v)} />
       </div>
-      <Field label="Credit limit \u20b9" value={f.credit_limit} onChange={(v) => set('credit_limit', v)} type="number" />
+      <Field label="Credit limit ₹" value={f.credit_limit} onChange={(v) => set('credit_limit', v)} type="number" />
       <Select label="Assign collector" value={f.collector_id} onChange={(v) => set('collector_id', v)}
-        options={[['', '\u2014 unassigned \u2014'], ...collectors.map((c) => [c.id, c.name])]} />
-      {!dealer.id && <Field label="Opening balance \u20b9 (optional)" value={f.opening_balance} onChange={(v) => set('opening_balance', v)} type="number" />}
-      <div className="text-[11px] text-slate-400 mb-2">Tip: for full history, add the dealer, open it, then use \u201cImport statement\u201d.</div>
+        options={[['', '— unassigned —'], ...collectors.map((c) => [c.id, c.name])]} />
+      <button type="button" data-testid="toggle-show-overview" onClick={() => set('show_on_overview', !f.show_on_overview)}
+        className="w-full flex items-center justify-between border border-slate-200 rounded-lg px-3 py-3 bg-white mb-3">
+        <div className="text-left">
+          <div className="text-[13px] font-semibold text-slate-700">Count balance on Overview / Dashboard</div>
+          <div className="text-[11px] text-slate-500">{f.show_on_overview ? 'Included in total outstanding, ageing and overdue lists' : 'Hidden from totals — ledger and reports still work'}</div>
+        </div>
+        <div className={'w-11 h-6 rounded-full relative transition-colors shrink-0 ' + (f.show_on_overview ? 'bg-emerald-600' : 'bg-slate-300')}>
+          <div className={'absolute top-0.5 w-5 h-5 bg-white rounded-full transition-all ' + (f.show_on_overview ? 'left-[22px]' : 'left-0.5')} />
+        </div>
+      </button>
+      {!dealer.id && <Field label="Opening balance ₹ (optional)" value={f.opening_balance} onChange={(v) => set('opening_balance', v)} type="number" />}
+      <div className="text-[11px] text-slate-400 mb-2">Tip: for full history, add the dealer, open it, then use “Import statement”.</div>
       <button onClick={save} className="w-full bg-emerald-700 text-white font-semibold py-3 rounded-xl mt-1">Save</button>
     </Modal>
   )
@@ -277,11 +288,11 @@ function BillModal({ dealer, onClose, onDone }) {
     catch (err) { toast.error(err.message) }
   }
   return (
-    <Modal title={'Add bill \u2014 ' + dealer.name} onClose={onClose}>
+    <Modal title={'Add bill — ' + dealer.name} onClose={onClose}>
       <Field label="Bill / invoice no." value={f.bill_no} onChange={(v) => set('bill_no', v)} />
       <div className="grid grid-cols-2 gap-3">
         <Field label="Date" value={f.date} onChange={(v) => set('date', v)} />
-        <Field label="Amount \u20b9" value={f.amount} onChange={(v) => set('amount', v)} type="number" />
+        <Field label="Amount ₹" value={f.amount} onChange={(v) => set('amount', v)} type="number" />
       </div>
       <button onClick={save} className="w-full bg-emerald-700 text-white font-semibold py-3 rounded-xl mt-1">Save bill</button>
     </Modal>
@@ -305,7 +316,7 @@ function StatementModal({ dealer, onClose, onDone }) {
     toast.success('Statement imported'); onDone()
   }
   return (
-    <Modal title={'Import statement \u2014 ' + dealer.name} onClose={onClose}>
+    <Modal title={'Import statement — ' + dealer.name} onClose={onClose}>
       <div className="text-[12px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
         Seeds this dealer's ledger once and replaces existing bills/payments. Don't re-import after collectors start recording payments.
       </div>
@@ -343,7 +354,7 @@ function BulkModal({ onClose, onDone }) {
     setBusy(true); setMsg('')
     try {
       const rows = parseBulkBills(await file.arrayBuffer())
-      if (!rows.length) { setMsg('No rows found \u2014 check the columns.'); setBusy(false); return }
+      if (!rows.length) { setMsg('No rows found — check the columns.'); setBusy(false); return }
       const res = await api.bulkBills(rows)
       setMsg('Added ' + res.added + ' bills.' + (res.unmatched?.length ? ' Unmatched: ' + res.unmatched.join(', ') : ''))
       if (!res.unmatched?.length) setTimeout(onDone, 900)
@@ -392,7 +403,7 @@ function PdfModal({ dealers, onClose, onDone }) {
     <Modal title="Add bill from invoice PDF" onClose={onClose}>
       {!parsed ? (
         <>
-          <div className="text-[12px] text-slate-500 mb-3">Upload a MARG invoice PDF \u2014 the app reads bill no, date and amount, then you confirm.</div>
+          <div className="text-[12px] text-slate-500 mb-3">Upload a MARG invoice PDF — the app reads bill no, date and amount, then you confirm.</div>
           {msg && <div className="text-[12px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">{msg}</div>}
           <input ref={fileRef} type="file" accept=".pdf" onChange={pick} className="hidden" />
           <button onClick={() => fileRef.current?.click()} disabled={busy}
@@ -403,10 +414,10 @@ function PdfModal({ dealers, onClose, onDone }) {
       ) : (
         <>
           <div className="text-[13px] text-slate-600 mb-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
-            From PDF \u2014 Bill <b>{parsed.bill_no}</b>, {parsed.date}, <b>{inr(parsed.amount)}</b>{parsed.party ? <> \u00b7 party \u201c{parsed.party}\u201d</> : null}
+            From PDF — Bill <b>{parsed.bill_no}</b>, {parsed.date}, <b>{inr(parsed.amount)}</b>{parsed.party ? <> \u00b7 party “{parsed.party}”</> : null}
           </div>
           <Select label="Dealer" value={dealerId} onChange={setDealerId}
-            options={[['', '\u2014 pick dealer \u2014'], ...dealers.map((d) => [d.id, d.name])]} />
+            options={[['', '— pick dealer —'], ...dealers.map((d) => [d.id, d.name])]} />
           <button onClick={save} disabled={busy}
             className="w-full bg-emerald-700 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60 mt-1">
             {busy && <Loader2 size={16} className="animate-spin" />}Add this bill

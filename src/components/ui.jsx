@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react'
 import { Plus, Pencil, Trash2, Loader2, ChevronLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
@@ -97,12 +98,29 @@ export function Select({ label, value, onChange, options }) {
 }
 
 export function Modal({ title, children, onClose }) {
+  const boxRef = useRef(null)
+  useEffect(() => {
+    // freeze the page behind the sheet so the keyboard / drag can't scroll it away
+    const root = document.documentElement
+    const main = document.querySelector('main')
+    const prevMain = main ? main.style.overflow : ''
+    root.classList.add('modal-open')
+    if (main) main.style.overflow = 'hidden'
+    if (boxRef.current) boxRef.current.scrollTop = 0
+    const onKey = (e) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => { root.classList.remove('modal-open'); if (main) main.style.overflow = prevMain; window.removeEventListener('keydown', onKey) }
+  }, []) // eslint-disable-line
   return (
-    <div className="fixed inset-0 bg-slate-900/50 dark:bg-black/60 backdrop-blur-sm flex items-end lg:items-center lg:justify-center z-30 animate-fade-in"
+    <div className="fixed inset-0 h-[100dvh] bg-slate-900/50 dark:bg-black/60 backdrop-blur-sm flex items-end lg:items-center lg:justify-center z-30 animate-fade-in overscroll-contain"
       onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 w-full max-w-md rounded-t-3xl lg:rounded-2xl p-5 max-h-[92%] overflow-y-auto shadow-2xl border border-slate-200/60 dark:border-slate-700 animate-slide-up">
+      <div ref={boxRef} role="dialog" aria-modal="true"
+        className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 w-full max-w-md rounded-t-3xl lg:rounded-2xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] max-h-[92dvh] overflow-y-auto overscroll-contain shadow-2xl border border-slate-200/60 dark:border-slate-700 animate-slide-up">
         <div className="mx-auto lg:hidden w-10 h-1 rounded-full bg-slate-200 dark:bg-slate-700 mb-4 -mt-1" />
-        <div className="font-display text-base font-bold mb-4">{title}</div>
+        <div className="flex items-center justify-between mb-4">
+          <div className="font-display text-base font-bold">{title}</div>
+          <button type="button" onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xl leading-none px-1 -mr-1">×</button>
+        </div>
         {children}
       </div>
     </div>

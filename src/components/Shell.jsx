@@ -136,7 +136,7 @@ export default function Shell() {
         </div>
 
         {/* Mobile bottom nav */}
-        <div className={'fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-md border-t border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl pt-1.5 shadow-[0_-8px_24px_-16px_rgba(15,23,42,.3)] lg:hidden ' + (tabs.length > 5 ? 'overflow-x-auto' : '')}
+        <div className={'bottom-nav fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-md border-t border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl pt-1.5 shadow-[0_-8px_24px_-16px_rgba(15,23,42,.3)] lg:hidden ' + (tabs.length > 5 ? 'overflow-x-auto' : '')}
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.375rem)' }}>
           {tabs.map(([to, label, Icon]) => (
             <NavLink key={to} to={to} end

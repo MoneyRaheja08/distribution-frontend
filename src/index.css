@@ -95,3 +95,7 @@ html.dark .skeleton-shine::after {
   background: linear-gradient(90deg, transparent, rgba(148,163,184,.14), transparent);
 }
 
+
+/* keep the page frozen while a sheet/modal is open (mobile keyboard, drags) */
+html.modal-open, html.modal-open body { overflow: hidden; height: 100%; }
+html.modal-open .bottom-nav { visibility: hidden; }
