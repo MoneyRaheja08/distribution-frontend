@@ -614,3 +614,101 @@ export function PurchasesReport({ from, to }) {
     </>
   )
 }
+
+// 16. Stock planner — what to order, what is stuck
+const ACT = {
+  'ORDER NOW': { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', chip: 'bg-red-600 text-white', bar: 'bg-red-500', hint: 'Urgent — will run out before new stock arrives' },
+  'ORDER SOON': { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', chip: 'bg-orange-500 text-white', bar: 'bg-orange-400', hint: 'Order in the next few days' },
+  'NO ORDER': { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', chip: 'bg-emerald-600 text-white', bar: 'bg-emerald-500', hint: 'Enough stock — nothing to do' },
+  'OVERSTOCK': { bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-700', chip: 'bg-sky-600 text-white', bar: 'bg-sky-500', hint: 'More than 90 days of stock — stop ordering' },
+  'SLOW MOVING': { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-600', chip: 'bg-slate-500 text-white', bar: 'bg-slate-400', hint: 'Nothing sold in 30 days — push or return' },
+}
+const daysTxt = (d) => d == null ? '—' : d >= 999 ? '∞' : d + ' d'
+
+export function StockPlanner() {
+  const [r, setR] = useState(null)
+  const [brand, setBrand] = useState('')
+  const [lead, setLead] = useState(7)
+  const [cover, setCover] = useState(30)
+  const [only, setOnly] = useState('')
+  const [q, setQ] = useState('')
+  useEffect(() => { setR(null); api.reportStockPlanner({ brand, lead_days: lead, cover_days: cover }).then(setR) }, [brand, lead, cover])
+  if (!r) return <SkeletonList rows={6} />
+  const rows = r.rows.filter((x) => (!only || x.action === only) && (!q || (x.model + ' ' + x.brand).toLowerCase().includes(q.toLowerCase())))
+  const dl = () => exportSheet('stock-planner-' + r.as_of + '.xlsx',
+    [['SKU', 'Product', 'Brand', 'Current stock', 'Sold last 7 days', 'Sold last 30 days', 'Avg daily sales', 'Days of stock left', 'Recommended order qty', 'Action', 'Stock value'],
+     ...r.rows.map((x) => [x.model, x.model, x.brand, x.stock, x.sold_7, x.sold_30, x.avg_daily, x.days_left == null ? '' : x.days_left, x.recommended, x.action, x.stock_value])],
+    { money: [10], sheet: 'Stock planner' })
+  const Top = ({ title, items, val, tone, testid }) => (
+    <div data-testid={testid} className="bg-white border border-slate-100 rounded-2xl shadow-sm p-4">
+      <div className={'text-[12px] font-bold uppercase tracking-wide mb-2 ' + tone}>{title}</div>
+      {items.length === 0 ? <div className="text-[12px] text-slate-400">Nothing here</div> : items.map((x, i) => (
+        <div key={i} className="flex justify-between items-center gap-2 py-1.5 border-t border-slate-50 text-[13px]">
+          <span className="truncate"><span className="text-slate-400 font-semibold mr-1.5">{i + 1}.</span><span className="font-semibold text-slate-800">{x.model}</span></span>
+          <span className={'font-bold shrink-0 ' + tone}>{val(x)}</span>
+        </div>
+      ))}
+    </div>
+  )
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <SelPick testid="plan-brand" label="All brands" value={brand} onChange={setBrand} options={r.brands} />
+        <label className="text-[12px] font-semibold text-slate-500 flex items-center gap-1.5">Supplier takes <input data-testid="plan-lead" type="number" min={1} max={60} value={lead} onChange={(e) => setLead(+e.target.value || 1)} className="w-14 border border-slate-200 rounded-lg px-2 py-1.5 text-[13px] text-slate-800" /> days to deliver</label>
+        <label className="text-[12px] font-semibold text-slate-500 flex items-center gap-1.5">Keep stock for <input data-testid="plan-cover" type="number" min={7} max={120} value={cover} onChange={(e) => setCover(+e.target.value || 7)} className="w-14 border border-slate-200 rounded-lg px-2 py-1.5 text-[13px] text-slate-800" /> days</label>
+        <div className="ml-auto"><ExportBtn onClick={dl} /></div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <Metric label="Units in stock" value={r.total_stock} sub={inr(r.total_value)} />
+        <Metric label="Units to order" value={r.order_units} sub={(r.counts['ORDER NOW'] || 0) + ' urgent · ' + (r.counts['ORDER SOON'] || 0) + ' soon'} tone={r.counts['ORDER NOW'] ? 'text-red-600' : 'text-slate-900'} />
+        <Metric label="Overstock value" value={inr(r.over_value)} sub={(r.counts['OVERSTOCK'] || 0) + ' SKUs · >90 d stock'} tone="text-sky-700" />
+        <Metric label="Not moving" value={inr(r.slow_value)} sub={(r.counts['SLOW MOVING'] || 0) + ' SKUs · 0 sold in 30 d'} tone="text-slate-600" />
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-3 mb-4">
+        <Top testid="plan-fastest" title="Top 10 fastest moving" tone="text-emerald-700" items={r.fastest} val={(x) => x.sold_7 + ' / 7 d · ' + x.sold_30 + ' / 30 d'} />
+        <Top testid="plan-lowest" title="Top 10 lowest stock" tone="text-red-600" items={r.lowest} val={(x) => x.stock + ' left · ' + daysTxt(x.days_left)} />
+        <Top testid="plan-order" title="Top 10 to order" tone="text-orange-700" items={r.to_order} val={(x) => 'order ' + x.recommended} />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5 mb-3">
+        <button onClick={() => setOnly('')} className={'text-[11px] font-bold px-2.5 py-1.5 rounded-full border ' + (!only ? 'border-slate-800 bg-slate-800 text-white' : 'border-slate-200 bg-white text-slate-600')}>All · {r.rows.length}</button>
+        {Object.keys(ACT).map((a) => <button key={a} data-testid={'plan-filter-' + a.toLowerCase().replace(' ', '-')} onClick={() => setOnly(only === a ? '' : a)} className={'text-[11px] font-bold px-2.5 py-1.5 rounded-full border ' + (only === a ? ACT[a].chip + ' border-transparent' : 'bg-white ' + ACT[a].text + ' ' + ACT[a].border)}>{a} · {r.counts[a] || 0}</button>)}
+        <input data-testid="plan-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find SKU…" className="ml-auto border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] w-40" />
+      </div>
+
+      <div className="hidden lg:grid grid-cols-[2fr_1fr_repeat(6,minmax(0,0.8fr))_1.2fr] gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+        <span>SKU / product</span><span>Brand</span><span className="text-right">Stock</span><span className="text-right">Sold 7 d</span><span className="text-right">Sold 30 d</span><span className="text-right">Avg / day</span><span className="text-right">Days left</span><span className="text-right">Order qty</span><span className="text-right">Action</span>
+      </div>
+      <div className="space-y-1.5">
+        {rows.length === 0 && <div className="text-center text-[13px] text-slate-400 py-8">No SKUs match.</div>}
+        {rows.map((x, i) => { const a = ACT[x.action]; return (
+          <div key={i} data-testid="plan-row" className={'rounded-xl border px-3 py-2.5 ' + a.bg + ' ' + a.border}>
+            <div className="lg:grid lg:grid-cols-[2fr_1fr_repeat(6,minmax(0,0.8fr))_1.2fr] lg:gap-2 lg:items-center">
+              <div className="flex justify-between items-start lg:block">
+                <div className="font-semibold text-slate-900 text-[13px] leading-tight">{x.model}</div>
+                <span className={'lg:hidden shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ' + a.chip}>{x.action}</span>
+              </div>
+              <div className="text-[11px] text-slate-500 lg:text-[12px]">{x.brand}</div>
+              <div className="grid grid-cols-3 gap-2 mt-2 lg:contents text-[12px]">
+                <Cell label="Stock" v={x.stock} strong />
+                <Cell label="Sold 7 d" v={x.sold_7} />
+                <Cell label="Sold 30 d" v={x.sold_30} />
+                <Cell label="Avg / day" v={x.avg_daily} />
+                <Cell label="Days left" v={daysTxt(x.days_left)} strong tone={a.text} />
+                <Cell label="Order qty" v={x.recommended > 0 ? x.recommended : '—'} strong tone={x.recommended > 0 ? a.text : 'text-slate-400'} />
+              </div>
+              <div className="hidden lg:flex justify-end"><span className={'text-[10px] font-bold px-2 py-1 rounded-full ' + a.chip}>{x.action}</span></div>
+            </div>
+            <div className={'text-[11px] mt-1.5 ' + a.text}>{x.action === 'ORDER NOW' && x.stock === 0 ? 'Out of stock and still selling — order ' + x.recommended + ' now.' : x.action === 'ORDER NOW' ? 'Only ' + daysTxt(x.days_left) + ' of stock, supplier needs ' + r.lead_days + ' d — order ' + x.recommended + ' now.' : x.action === 'ORDER SOON' ? 'Runs out in ' + daysTxt(x.days_left) + ' — order ' + x.recommended + ' this week.' : x.action === 'OVERSTOCK' ? daysTxt(x.days_left) + ' of stock (' + inr(x.stock_value) + ' locked) — do not order.' : x.action === 'SLOW MOVING' ? (x.days_since_sale != null ? 'Last sold ' + x.days_since_sale + ' d ago' : 'Never sold') + ' · ' + inr(x.stock_value) + ' locked — push or return.' : a.hint}</div>
+          </div>
+        ) })}
+      </div>
+      <div className="text-[11px] text-slate-400 mt-4">Avg daily sales = sold in last 30 days ÷ 30. Days left = stock ÷ avg daily. Recommended order = enough for supplier lead time + {r.cover_days} days of cover, minus what you already have. Red = runs out within {r.lead_days} d · Orange = within {r.lead_days + 7} d · Green = fine · Blue = over 90 d of stock · Grey = nothing sold in 30 d.</div>
+    </>
+  )
+}
+function Cell({ label, v, strong, tone }) {
+  return <div className="lg:text-right"><div className="text-[9px] uppercase tracking-wide text-slate-400 lg:hidden">{label}</div><div className={(strong ? 'font-bold ' : 'font-semibold ') + (tone || 'text-slate-800')}>{v}</div></div>
+}

@@ -11,17 +11,17 @@ import { toast } from '../../lib/toast.js'
 import { useAuth } from '../../auth/AuthContext.jsx'
 import { Spin, BackBtn, Card, SkeletonList } from '../../components/ui.jsx'
 import { Big, ExportBtn, Section, Row2, Metric, FilterBar, Search, Pick, SelPick } from '../../components/reportBits.jsx'
-import { DealerScorecard, CreditTrend, InactiveDealers, MonthOnMonth, CategoryMix, PriceRealisation, CashFlow, CollectorEfficiency, SchemeTracker, Digest, DailySales, PurchasesReport } from './Reports2.jsx'
+import { DealerScorecard, CreditTrend, InactiveDealers, MonthOnMonth, CategoryMix, PriceRealisation, CashFlow, CollectorEfficiency, SchemeTracker, Digest, DailySales, PurchasesReport, StockPlanner } from './Reports2.jsx'
 
 const monthStart = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01` }
 const today = () => new Date().toISOString().slice(0, 10)
 const GROUPS = [
   ['Collect', [['followup', 'Follow-up'], ['beat', 'Beat sheet'], ['collections', 'Collections'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['cashflow', 'Cash forecast'], ['colleff', 'Collector efficiency']]],
-  ['Sales', [['daily', 'Daily sales'], ['sales', 'Dealer × Model'], ['purchasesr', 'Purchases'], ['mom', 'Month vs month'], ['catmix', 'Category mix'], ['price', 'Price realisation'], ['inactive', 'Lost dealers'], ['billspdf', 'PDF bills'], ['purchases', 'Brand buys']]],
+  ['Sales', [['planner', 'Stock planner'], ['daily', 'Daily sales'], ['sales', 'Dealer × Model'], ['purchasesr', 'Purchases'], ['mom', 'Month vs month'], ['catmix', 'Category mix'], ['price', 'Price realisation'], ['inactive', 'Lost dealers'], ['billspdf', 'PDF bills'], ['purchases', 'Brand buys']]],
   ['Profit', [['profit', 'Profit'], ['profit2', 'Profit 2 · Real'], ['scheme', 'Scheme tracker'], ['dscore', 'Dealer scorecard'], ['trend', 'Credit trend'], ['scorecard', 'Brand scorecard'], ['top', 'Top performers'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']]],
   ['Daily', [['digest', 'WhatsApp digest']]],
 ]
-const NO_DATES = new Set(['ageing', 'billage', 'cashflow', 'inactive', 'trend', 'mom', 'scheme', 'digest', 'followup', 'daily'])
+const NO_DATES = new Set(['ageing', 'billage', 'cashflow', 'inactive', 'trend', 'mom', 'scheme', 'digest', 'followup', 'daily', 'planner'])
 
 
 
@@ -92,6 +92,7 @@ export default function Reports() {
       {tab === 'digest' && <Digest />}
       {tab === 'daily' && <DailySales initial={sp.get('day')} />}
       {tab === 'purchasesr' && <PurchasesReport from={from} to={to} />}
+      {tab === 'planner' && <StockPlanner />}
     </>
   )
 }
