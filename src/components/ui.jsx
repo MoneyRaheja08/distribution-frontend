@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Plus, Pencil, Trash2, Loader2, ChevronLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
@@ -111,7 +112,9 @@ export function Modal({ title, children, onClose }) {
     window.addEventListener('keydown', onKey)
     return () => { root.classList.remove('modal-open'); if (main) main.style.overflow = prevMain; window.removeEventListener('keydown', onKey) }
   }, []) // eslint-disable-line
-  return (
+  // Portal to <body>: the page wrapper animates `transform`, which on iOS/WebKit traps
+  // position:fixed children inside <main> (sheet stuck / cut off / not scrollable).
+  return createPortal(
     <div className="fixed inset-0 h-[100dvh] bg-slate-900/50 dark:bg-black/60 backdrop-blur-sm flex items-end lg:items-center lg:justify-center z-30 animate-fade-in overscroll-contain"
       onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div ref={boxRef} role="dialog" aria-modal="true"
@@ -123,7 +126,8 @@ export function Modal({ title, children, onClose }) {
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

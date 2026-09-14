@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { _resolveConfirm } from '../lib/confirm.js'
 
 export default function ConfirmHost() {
@@ -10,7 +11,7 @@ export default function ConfirmHost() {
   }, [])
   if (!state) return null
   const close = (v) => { _resolveConfirm(v); setState(null) }
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-[60] p-6"
       onClick={(e) => e.target === e.currentTarget && close(false)}>
       <div className="bg-white rounded-2xl p-5 max-w-xs w-full shadow-2xl">
@@ -20,6 +21,7 @@ export default function ConfirmHost() {
           <button onClick={() => close(true)} className={'flex-1 text-white font-semibold py-2.5 rounded-xl text-[13px] ' + (state.danger ? 'bg-red-600' : 'bg-emerald-700')}>{state.confirmLabel || 'Confirm'}</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
