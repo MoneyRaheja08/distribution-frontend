@@ -5,9 +5,13 @@ import { toast } from '../../lib/toast.js'
 import { confirmDialog } from '../../lib/confirm.js'
 import { inr } from '../../lib/format.js'
 import { exportWorkbook } from '../../lib/excel.js'
+import { useAuth } from '../../auth/AuthContext.jsx'
 import { Spin, SectionH, RowActions, Modal, Field } from '../../components/ui.jsx'
 
 export default function Stock() {
+  const { auth } = useAuth()
+  const canPrices = auth.user.role === 'admin' || !!auth.user.can_view_stock_prices
+  const openModel = (m) => { if (canPrices) setModelDetail(m) }
   const [data, setData] = useState(null)
   const [summary, setSummary] = useState(null)
   const [editing, setEditing] = useState(null)
@@ -63,10 +67,10 @@ export default function Stock() {
             {lookup.results && (lookup.results.length === 0
               ? <div data-testid="track-no-match" className="text-[13px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">No IMEI/serial or model matches “{imei.trim()}”.</div>
               : <div className="space-y-2">
-                  <div className="text-[11px] text-slate-400">{lookup.results.length}{lookup.results.length >= 500 ? '+ (showing first 30 — refine to narrow)' : ''} match(es) · tap a card for full history</div>
+                  <div className="text-[11px] text-slate-400">{lookup.results.length}{lookup.results.length >= 500 ? '+ (showing first 30 — refine to narrow)' : ''} match(es){canPrices ? ' · tap a card for full history' : ''}</div>
                   {lookup.results.slice(0, 30).map((u, i) => (
-                    <button key={i} type="button" data-testid={'track-result-' + i} onClick={() => setModelDetail(u.model)} className="w-full text-left transition-transform active:scale-[0.99]">
-                      <ImeiCard u={u} tappable />
+                    <button key={i} type="button" data-testid={'track-result-' + i} disabled={!canPrices} onClick={() => openModel(u.model)} className="w-full text-left transition-transform active:scale-[0.99] disabled:cursor-default">
+                      <ImeiCard u={u} tappable={canPrices} />
                     </button>
                   ))}
                 </div>)}
@@ -138,7 +142,7 @@ export default function Stock() {
           {!units ? <div className="text-slate-400 text-[13px] py-4 text-center">Loading…</div>
             : units.length === 0 ? <div className="text-slate-400 text-[13px] py-4 text-center">No units match.</div>
               : units.map((u, i) => (
-                <button key={i} type="button" data-testid={'unit-row-' + i} onClick={() => setModelDetail(u.model)} className="w-full flex items-center justify-between px-1 py-2 text-[13px] text-left hover:bg-slate-50 rounded-lg transition-colors">
+                <button key={i} type="button" data-testid={'unit-row-' + i} disabled={!canPrices} onClick={() => openModel(u.model)} className={'w-full flex items-center justify-between px-1 py-2 text-[13px] text-left rounded-lg transition-colors ' + (canPrices ? 'hover:bg-slate-50' : 'cursor-default')}>
                   <div className="min-w-0 pr-2">
                     <div className="font-semibold text-slate-800 truncate">{u.model}</div>
                     <div className="text-[11px] text-slate-400 font-mono truncate">{u.imei}</div>
@@ -161,7 +165,7 @@ export default function Stock() {
           {rows.map((r, i) => {
             const c = r.available === 0 ? 'text-red-700' : r.available <= 3 ? 'text-amber-700' : 'text-slate-900'
             return (
-              <button key={i} type="button" data-testid={'inv-row-' + i} onClick={() => setModelDetail(r.model)} className="w-full text-left bg-white border border-slate-200/70 rounded-2xl p-3.5 shadow-soft flex justify-between items-center hover:border-brand-300 transition-colors active:scale-[0.99]">
+              <button key={i} type="button" data-testid={'inv-row-' + i} disabled={!canPrices} onClick={() => openModel(r.model)} className={'w-full text-left bg-white border border-slate-200/70 rounded-2xl p-3.5 shadow-soft flex justify-between items-center transition-colors ' + (canPrices ? 'hover:border-brand-300 active:scale-[0.99]' : 'cursor-default')}>
                 <div className="min-w-0 pr-2">
                   <div className="text-[13.5px] font-semibold text-slate-900 truncate">{r.model}</div>
                   <div className="text-[11px] text-slate-400 mt-0.5">{r.brand}{r.group ? ' · ' + r.group : ''} · <span className="uppercase">{r.tracked}</span></div>
@@ -193,7 +197,7 @@ export default function Stock() {
         })}
       </div>
       {editing && <StockForm item={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload() }} />}
-      {modelDetail && <ModelHistoryModal model={modelDetail} onClose={() => setModelDetail(null)} />}
+      {modelDetail && canPrices && <ModelHistoryModal model={modelDetail} onClose={() => setModelDetail(null)} />}
     </>
   )
 }
