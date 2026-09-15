@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../../api/client.js'
 import { inr } from '../../lib/format.js'
 import { exportSheet } from '../../lib/excel.js'
@@ -351,20 +351,50 @@ export function CollectorEfficiency({ from, to }) {
   )
 }
 
+// Searchable picker (type to filter a long list, e.g. models)
+function SearchPick({ value, onChange, onPick, options, placeholder, testid, clearOnPick }) {
+  const cls = 'border border-slate-200 rounded-lg px-2.5 py-2 text-[13px] w-full'
+  const [q, setQ] = useState(value || '')
+  const [open, setOpen] = useState(false)
+  useEffect(() => { setQ(value || '') }, [value])
+  const list = useMemo(() => {
+    const n = q.trim().toLowerCase()
+    return (options || []).filter((o) => !n || String(o).toLowerCase().includes(n)).slice(0, 60)
+  }, [q, options])
+  const choose = (o) => { (onPick || onChange)(o); setQ(clearOnPick ? '' : o); setOpen(false) }
+  return (
+    <div className="relative">
+      <input data-testid={testid} value={q} placeholder={placeholder} className={cls}
+        onChange={(e) => { setQ(e.target.value); if (onChange) onChange(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)} />
+      {open && list.length > 0 && (
+        <div className="absolute z-30 left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg">
+          {list.map((o) => (
+            <button key={o} type="button" data-testid={'pick-' + o} onMouseDown={() => choose(o)}
+              className="w-full text-left px-3 py-2 text-[12px] hover:bg-emerald-50 border-b border-slate-50 last:border-0 truncate">{o}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // 12. Scheme tracker
 export function SchemeTracker() {
   const [r, setR] = useState(null)
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7))
   const [open, setOpen] = useState(false)
   const [recv, setRecv] = useState(null)   // scheme being marked received
-  const blank = { basis: 'purchase', brand: '', scope: 'all', scope_value: '', target_qty: '', target_amount: '', payout_pct: '', payout_amount: '', prorata: false, note: '', custom: false, date_from: '', date_to: '' }
+  const blank = { basis: 'purchase', brand: '', scope: 'all', scope_value: '', scope_values: [], target_qty: '', target_amount: '', payout_pct: '', payout_amount: '', prorata: false, note: '', custom: false, date_from: '', date_to: '' }
   const [f, setF] = useState(blank)
   const load = () => { setR(null); api.schemesList(month).then(setR) }
   useEffect(load, [month]) // eslint-disable-line
   if (!r) return <SkeletonList rows={5} />
   const save = async () => {
     try {
-      await api.schemeCreate({ month, date_from: f.custom ? f.date_from : '', date_to: f.custom ? f.date_to : '', basis: f.basis, brand: f.brand, scope: f.scope, scope_value: f.scope_value, target_qty: +f.target_qty || 0, target_amount: +f.target_amount || 0, payout_pct: +f.payout_pct || 0, payout_amount: +f.payout_amount || 0, prorata: f.prorata, note: f.note })
+      if (f.scope === 'group' && !f.scope_value) return toast.error('Pick a category')
+      if (f.scope === 'model' && f.scope_values.length === 0) return toast.error('Add at least one model')
+      await api.schemeCreate({ month, date_from: f.custom ? f.date_from : '', date_to: f.custom ? f.date_to : '', basis: f.basis, brand: f.brand, scope: f.scope, scope_value: f.scope === 'model' ? (f.scope_values[0] || '') : f.scope_value, scope_values: f.scope === 'model' ? f.scope_values : [], target_qty: +f.target_qty || 0, target_amount: +f.target_amount || 0, payout_pct: +f.payout_pct || 0, payout_amount: +f.payout_amount || 0, prorata: f.prorata, note: f.note })
       toast.success('Scheme added'); setF(blank); setOpen(false); load()
     } catch (e) { toast.error(e.message) }
   }
@@ -374,7 +404,7 @@ export function SchemeTracker() {
   const del = async (id) => { if (!confirm('Remove this scheme?')) return; await api.schemeDelete(id); load() }
   const dl = () => exportSheet('schemes-' + month + '.xlsx',
     [['Basis', 'Brand', 'Scope', 'Target qty', 'Actual qty', 'Target amount', 'Actual amount', 'Achieved %', '% income', 'Payout earned', 'Potential', 'Gap qty', 'Gap amount', 'Status', 'Received', 'Received on', 'Note'],
-     ...r.rows.map((x) => [x.basis, x.brand || 'All', x.scope === 'all' ? 'All models' : x.scope_value, x.target_qty, x.actual_qty, x.target_amount, x.actual_amount, x.achieved_pct, x.pct_income, x.earned, x.potential, x.gap_qty, x.gap_amount, x.status, x.received_amount, x.received_on || '', x.note])],
+     ...r.rows.map((x) => [x.basis, x.brand || 'All', x.scope_label || (x.scope === 'all' ? 'All models' : x.scope_value), x.target_qty, x.actual_qty, x.target_amount, x.actual_amount, x.achieved_pct, x.pct_income, x.earned, x.potential, x.gap_qty, x.gap_amount, x.status, x.received_amount, x.received_on || '', x.note])],
     { money: [5, 6, 8, 9, 10, 12, 14], sheet: 'Schemes' })
   const inp = 'border border-slate-200 rounded-lg px-2.5 py-2 text-[13px] w-full'
   const ST = { open: ['slate', 'Open'], claimed: ['amber', 'Claimed'], received: ['green', 'Received'] }
@@ -400,8 +430,25 @@ export function SchemeTracker() {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <label className="text-[11px] font-semibold text-slate-500">Brand<select className={inp} value={f.brand} onChange={(e) => setF({ ...f, brand: e.target.value })}><option value="">All</option>{r.brands.map((b) => <option key={b}>{b}</option>)}</select></label>
-            <label className="text-[11px] font-semibold text-slate-500">Applies to<select className={inp} value={f.scope} onChange={(e) => setF({ ...f, scope: e.target.value, scope_value: '' })}><option value="all">All models</option><option value="group">Category</option><option value="model">Model</option></select></label>
-            {f.scope !== 'all' && <label className="text-[11px] font-semibold text-slate-500">{f.scope === 'group' ? 'Category' : 'Model'}<select className={inp} value={f.scope_value} onChange={(e) => setF({ ...f, scope_value: e.target.value })}><option value="">Select…</option>{(f.scope === 'group' ? r.groups : r.models).map((g) => <option key={g}>{g}</option>)}</select></label>}
+            <label className="text-[11px] font-semibold text-slate-500">Applies to<select className={inp} value={f.scope} onChange={(e) => setF({ ...f, scope: e.target.value, scope_value: '', scope_values: [] })}><option value="all">All models</option><option value="group">Category</option><option value="model">Model(s)</option></select></label>
+            {f.scope === 'group' && <label className="text-[11px] font-semibold text-slate-500">Category<select className={inp} value={f.scope_value} onChange={(e) => setF({ ...f, scope_value: e.target.value })}><option value="">Select…</option>{r.groups.map((g) => <option key={g}>{g}</option>)}</select></label>}
+            {f.scope === 'model' && (
+              <label className="text-[11px] font-semibold text-slate-500 col-span-2 sm:col-span-3">Models <span className="text-slate-400">(add one or many)</span>
+                <SearchPick testid="scheme-model-search" value="" clearOnPick placeholder="Type to add a model…"
+                  options={r.models.filter((m) => !f.scope_values.includes(m))}
+                  onPick={(v) => { if (v && !f.scope_values.includes(v)) setF({ ...f, scope_values: [...f.scope_values, v] }) }} />
+                {f.scope_values.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {f.scope_values.map((m) => (
+                      <span key={m} data-testid={'scheme-model-chip-' + m} className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-[11px] font-semibold rounded-full pl-2.5 pr-1 py-1">
+                        <span className="truncate max-w-[11rem]">{m}</span>
+                        <button type="button" onClick={() => setF({ ...f, scope_values: f.scope_values.filter((x) => x !== m) })} className="rounded-full hover:bg-emerald-100 w-4 h-4 flex items-center justify-center leading-none">×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </label>
+            )}
             <label className="text-[11px] font-semibold text-slate-500">Target qty <span className="text-slate-400">(optional)</span><input data-testid="scheme-target-qty" className={inp} type="number" value={f.target_qty} onChange={(e) => setF({ ...f, target_qty: e.target.value })} /></label>
             <label className="text-[11px] font-semibold text-slate-500">Target amount ₹ <span className="text-slate-400">(optional)</span><input className={inp} type="number" value={f.target_amount} onChange={(e) => setF({ ...f, target_amount: e.target.value })} /></label>
             <label className="text-[11px] font-semibold text-slate-500">% on {f.basis} value<input data-testid="scheme-payout-pct" className={inp} type="number" step="0.25" value={f.payout_pct} onChange={(e) => setF({ ...f, payout_pct: e.target.value })} placeholder="e.g. 2" /></label>
@@ -425,7 +472,7 @@ export function SchemeTracker() {
             <div key={x.id} data-testid="scheme-row" className="px-3.5 py-3 border-b border-slate-50 last:border-0">
               <div className="flex justify-between items-start gap-2">
                 <div className="min-w-0">
-                  <div className="text-[14px] font-semibold text-slate-800 truncate">{x.brand || 'All brands'} · {x.scope === 'all' ? 'All models' : x.scope_value}</div>
+                  <div className="text-[14px] font-semibold text-slate-800 truncate">{x.brand || 'All brands'} · {x.scope_label || (x.scope === 'all' ? 'All models' : x.scope_value)}</div>
                   <div className="flex flex-wrap items-center gap-1.5 mt-1"><Tag tone="blue">on {x.basis}s</Tag>{x.date_from && <Tag tone="slate">{x.period_from} → {x.period_to}</Tag>}<Tag tone={tone}>{label}</Tag>{x.behind && <Tag tone="red">Behind pace</Tag>}{x.note && <span className="text-[11px] text-slate-400">{x.note}</span>}</div>
                 </div>
                 <div className="text-right shrink-0"><div className={'text-[15px] font-bold ' + (x.met ? 'text-emerald-700' : 'text-slate-700')}>{x.met ? inr(x.earned) : inr(x.potential)}</div><div className="text-[10px] text-slate-400">{x.met ? 'earned' : 'if target met'}</div></div>

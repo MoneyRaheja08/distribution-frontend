@@ -52,6 +52,7 @@ export const api = {
   companies: () => USE_MOCK ? mock.companies() : http('/companies'),
   createCompany: (name) => USE_MOCK ? mock.createCompany(name) : http('/companies', { method: 'POST', body: { name } }),
   orders: (status) => USE_MOCK ? mock.orders(status) : http('/orders' + (status ? '?status=' + status : '')),
+  orderDealerModels: (dealerId) => USE_MOCK ? mock.empty({ stock: [], billed: {} }) : http('/orders/dealer-models?dealer_id=' + encodeURIComponent(dealerId)),
   createOrder: (body) => USE_MOCK ? mock.createOrder(body) : http('/orders', { method: 'POST', body }),
   executeOrder: (id, bill_no) => USE_MOCK ? mock.executeOrder(id, bill_no) : http('/orders/' + id + '/execute', { method: 'PATCH', body: { bill_no } }),
   deleteOrder: (id) => USE_MOCK ? mock.deleteOrder(id) : http('/orders/' + id, { method: 'DELETE' }),
@@ -127,6 +128,7 @@ export const api = {
   importPurchaseCommit: (file, fmt = 'dmy') => { if (USE_MOCK) return mock.importPurchaseCommit(file); const fd = new FormData(); fd.append('file', file); return httpForm('/import/purchase/commit?date_format=' + fmt, fd) },
   catalogUnits: (params = '') => USE_MOCK ? mock.catalogUnits(params) : http('/catalog/units' + params),
   imeiLookup: (imei) => USE_MOCK ? mock.imeiLookup(imei) : http('/catalog/imei/' + encodeURIComponent(imei)),
+  modelHistory: (model) => USE_MOCK ? mock.empty({ model, brand: '', available: 0, total: 0, purchased: { units: 0, value: 0 }, sold: { units: 0, value: 0 }, purchases: [], sales: [] }) : http('/catalog/model-history?model=' + encodeURIComponent(model)),
   stockSummary: () => USE_MOCK ? mock.stockSummary() : http('/catalog/stock-summary'),
 
   users: () => USE_MOCK ? mock.list('users') : http('/users'),

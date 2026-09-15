@@ -4,6 +4,7 @@ import { api } from '../../api/client.js'
 import { toast } from '../../lib/toast.js'
 import { confirmDialog } from '../../lib/confirm.js'
 import { inr } from '../../lib/format.js'
+import { exportWorkbook } from '../../lib/excel.js'
 import { Spin, SectionH, RowActions, Modal, Field } from '../../components/ui.jsx'
 
 export default function Stock() {
@@ -12,6 +13,7 @@ export default function Stock() {
   const [editing, setEditing] = useState(null)
   const [imei, setImei] = useState('')
   const [lookup, setLookup] = useState(null)
+  const [modelDetail, setModelDetail] = useState(null)
   const [uf, setUf] = useState({ brand: '', status: '', q: '' })
   const [units, setUnits] = useState(null)
   const [agingDays, setAgingDays] = useState(60)
@@ -31,9 +33,10 @@ export default function Stock() {
 
   const del = async (id) => { if (await confirmDialog('Delete this product?', { danger: true, confirmLabel: 'Delete' })) { await api.delStock(id); reload(); toast.success('Product deleted') } }
   const search = async () => {
-    if (!imei.trim()) return
+    const term = imei.trim()
+    if (term.length < 3) return toast.error('Type at least 3 characters')
     setLookup({ loading: true })
-    try { setLookup({ result: await api.imeiLookup(imei.trim()) }) }
+    try { setLookup({ results: await api.catalogUnits('?q=' + encodeURIComponent(term)) }) }
     catch (e) { setLookup({ error: e.message }) }
   }
   const rows = summary.rows || []
@@ -49,7 +52,7 @@ export default function Stock() {
           <div className="relative flex-1">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input data-testid="stock-imei-search" value={imei} onChange={(e) => setImei(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search()}
-              placeholder="Enter IMEI / serial number…" className="w-full border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 bg-white text-base outline-none focus:border-brand-500 transition-colors" />
+              placeholder="IMEI / serial or model — 4+ characters…" className="w-full border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 bg-white text-base outline-none focus:border-brand-500 transition-colors" />
           </div>
           <button data-testid="stock-imei-search-btn" onClick={search} className="bg-slate-900 hover:bg-slate-800 text-white text-[13px] font-semibold px-4 rounded-xl transition-colors">Track</button>
         </div>
@@ -57,7 +60,16 @@ export default function Stock() {
           <div className="mt-3">
             {lookup.loading && <div className="flex items-center gap-2 text-slate-400 text-[13px]"><Loader2 size={14} className="animate-spin" />Searching…</div>}
             {lookup.error && <div className="text-[13px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">{lookup.error}</div>}
-            {lookup.result && <ImeiCard u={lookup.result} />}
+            {lookup.results && (lookup.results.length === 0
+              ? <div data-testid="track-no-match" className="text-[13px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">No IMEI/serial or model matches “{imei.trim()}”.</div>
+              : <div className="space-y-2">
+                  <div className="text-[11px] text-slate-400">{lookup.results.length}{lookup.results.length >= 500 ? '+ (showing first 30 — refine to narrow)' : ''} match(es) · tap a card for full history</div>
+                  {lookup.results.slice(0, 30).map((u, i) => (
+                    <button key={i} type="button" data-testid={'track-result-' + i} onClick={() => setModelDetail(u.model)} className="w-full text-left transition-transform active:scale-[0.99]">
+                      <ImeiCard u={u} tappable />
+                    </button>
+                  ))}
+                </div>)}
           </div>
         )}
       </div>
@@ -126,13 +138,13 @@ export default function Stock() {
           {!units ? <div className="text-slate-400 text-[13px] py-4 text-center">Loading…</div>
             : units.length === 0 ? <div className="text-slate-400 text-[13px] py-4 text-center">No units match.</div>
               : units.map((u, i) => (
-                <div key={i} className="flex items-center justify-between px-1 py-2 text-[13px]">
+                <button key={i} type="button" data-testid={'unit-row-' + i} onClick={() => setModelDetail(u.model)} className="w-full flex items-center justify-between px-1 py-2 text-[13px] text-left hover:bg-slate-50 rounded-lg transition-colors">
                   <div className="min-w-0 pr-2">
                     <div className="font-semibold text-slate-800 truncate">{u.model}</div>
                     <div className="text-[11px] text-slate-400 font-mono truncate">{u.imei}</div>
                   </div>
                   <span className={'text-[10px] font-bold px-2 py-0.5 rounded-full ring-1 shrink-0 ' + (u.status === 'sold' ? 'text-slate-600 bg-slate-100 ring-slate-200' : 'text-brand-700 bg-brand-50 ring-brand-100')}>{u.status === 'sold' ? 'Sold' : 'In stock'}</span>
-                </div>
+                </button>
               ))}
         </div>
       </div>
@@ -149,13 +161,13 @@ export default function Stock() {
           {rows.map((r, i) => {
             const c = r.available === 0 ? 'text-red-700' : r.available <= 3 ? 'text-amber-700' : 'text-slate-900'
             return (
-              <div key={i} className="bg-white border border-slate-200/70 rounded-2xl p-3.5 shadow-soft flex justify-between items-center">
+              <button key={i} type="button" data-testid={'inv-row-' + i} onClick={() => setModelDetail(r.model)} className="w-full text-left bg-white border border-slate-200/70 rounded-2xl p-3.5 shadow-soft flex justify-between items-center hover:border-brand-300 transition-colors active:scale-[0.99]">
                 <div className="min-w-0 pr-2">
                   <div className="text-[13.5px] font-semibold text-slate-900 truncate">{r.model}</div>
                   <div className="text-[11px] text-slate-400 mt-0.5">{r.brand}{r.group ? ' · ' + r.group : ''} · <span className="uppercase">{r.tracked}</span></div>
                 </div>
                 <div className="text-right shrink-0"><div className={'font-display text-lg font-extrabold ' + c}>{r.available}</div><div className="text-[10px] text-slate-400">of {r.total}</div></div>
-              </div>
+              </button>
             )
           })}
         </div>
@@ -181,14 +193,78 @@ export default function Stock() {
         })}
       </div>
       {editing && <StockForm item={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload() }} />}
+      {modelDetail && <ModelHistoryModal model={modelDetail} onClose={() => setModelDetail(null)} />}
     </>
   )
 }
 
-function ImeiCard({ u }) {
+function ModelHistoryModal({ model, onClose }) {
+  const [d, setD] = useState(null)
+  useEffect(() => { setD(null); api.modelHistory(model).then(setD) }, [model])
+  const dl = () => {
+    const safe = model.replace(/[^\w.-]+/g, '_').slice(0, 60)
+    exportWorkbook('model-' + safe + '.xlsx', [
+      { name: 'Summary', aoa: [['Model', 'Brand', 'In stock', 'Total', 'Purchased units', 'Purchased ₹', 'Sold units', 'Sold ₹'],
+        [d.model, d.brand || '', d.available, d.total, d.purchased.units, d.purchased.value, d.sold.units, d.sold.value]], money: [5, 7] },
+      { name: 'Purchases', aoa: [['Date', 'Bill', 'Supplier', 'Qty', 'Rate', 'Amount', 'IMEI'],
+        ...d.purchases.map((x) => [x.date, x.bill_no, x.party, x.imei ? 1 : x.qty, x.rate, x.amount, x.imei || ''])], money: [4, 5] },
+      { name: 'Sales', aoa: [['Date', 'Bill', 'Dealer', 'Qty', 'Rate', 'Amount', 'IMEI'],
+        ...d.sales.map((x) => [x.date, x.bill_no, x.party, x.imei ? 1 : x.qty, x.rate, x.amount, x.imei || ''])], money: [4, 5] },
+    ])
+  }
+  const Stat = ({ label, v, sub, tone }) => (
+    <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-center">
+      <div className={'font-display text-lg font-bold ' + (tone || 'text-slate-900')}>{v}</div>
+      <div className="text-[10px] uppercase tracking-wide text-slate-400">{label}</div>
+      {sub != null && <div className="text-[11px] text-slate-500 mt-0.5">{sub}</div>}
+    </div>
+  )
+  const Hist = ({ title, rows, party, tone }) => (
+    <div>
+      <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 mb-1.5">{title} ({rows.length})</div>
+      {rows.length === 0 ? <div className="text-[12px] text-slate-400 py-2">None.</div> : (
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
+          {rows.map((x, i) => (
+            <div key={i} className="flex justify-between items-start px-3 py-2 border-b border-slate-50 last:border-0 text-[12px]">
+              <div className="min-w-0 pr-2">
+                <div className="font-semibold text-slate-800 truncate">{x.party || '—'}</div>
+                <div className="text-[11px] text-slate-400">{x.bill_no ? x.bill_no + ' · ' : ''}{x.date || '—'}{x.imei ? ' · ' + x.imei : ''}</div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className={'font-bold ' + tone}>{inr(x.amount)}</div>
+                <div className="text-[10px] text-slate-400">{x.imei ? '1' : x.qty} {x.rate ? '× ' + inr(x.rate) : ''}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+  return (
+    <Modal title={model} onClose={onClose}>
+      {!d ? <div className="py-8"><Spin /></div> : (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between -mt-1">
+            <div className="text-[11px] text-slate-400">{d.brand || '—'}</div>
+            <button data-testid="model-history-excel" onClick={dl} className="text-[12px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1">↓ Excel</button>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <Stat label="In stock" v={d.available} tone={d.available <= 0 ? 'text-red-600' : d.available <= 3 ? 'text-amber-600' : 'text-brand-700'} />
+            <Stat label="Purchased" v={d.purchased.units} sub={inr(d.purchased.value)} />
+            <Stat label="Sold" v={d.sold.units} sub={inr(d.sold.value)} />
+          </div>
+          <Hist title="Purchases" rows={d.purchases} tone="text-slate-700" />
+          <Hist title="Sales (to dealers)" rows={d.sales} tone="text-emerald-700" />
+        </div>
+      )}
+    </Modal>
+  )
+}
+
+function ImeiCard({ u, tappable }) {
   const sold = u.status === 'sold'
   return (
-    <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/60">
+    <div className={'border border-slate-200 rounded-xl p-3 bg-slate-50/60 ' + (tappable ? 'hover:border-brand-300 hover:bg-white transition-colors' : '')}>
       <div className="flex items-center justify-between">
         <div className="font-mono text-[12px] font-semibold text-slate-700 truncate pr-2">{u.imei}</div>
         <span className={'text-[10px] font-bold px-2 py-0.5 rounded-full ring-1 ' + (sold ? 'text-slate-600 bg-slate-100 ring-slate-200' : 'text-brand-700 bg-brand-50 ring-brand-100')}>{sold ? 'Sold' : 'In stock'}</span>

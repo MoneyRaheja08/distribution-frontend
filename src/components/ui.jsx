@@ -50,6 +50,8 @@ export function Pill({ tone, children }) {
     ok: 'bg-brand-50 text-brand-700 ring-brand-100 dark:bg-brand-500/10 dark:text-brand-300 dark:ring-brand-500/20',
     over: 'bg-amber-50 text-amber-700 ring-amber-100 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20',
     old: 'bg-red-50 text-red-700 ring-red-100 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20',
+    warn: 'bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/25',
+    muted: 'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-700/40 dark:text-slate-300 dark:ring-slate-600',
   }
   return <span className={'inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ring-1 mt-1 mr-1 ' + tones[tone]}>{children}</span>
 }
@@ -86,11 +88,11 @@ export function Field({ label, value, onChange, type = 'text', placeholder, big 
   )
 }
 
-export function Select({ label, value, onChange, options }) {
+export function Select({ label, value, onChange, options, testid }) {
   return (
     <div className="mb-3">
       <div className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">{label}</div>
-      <select value={value} onChange={(e) => onChange(e.target.value)}
+      <select value={value} onChange={(e) => onChange(e.target.value)} data-testid={testid}
         className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-base outline-none transition-colors focus:border-brand-500">
         {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
       </select>
