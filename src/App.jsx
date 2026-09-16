@@ -21,6 +21,7 @@ import Reconcile from './pages/staff/Reconcile.jsx'
 import Reports from './pages/staff/Reports.jsx'
 import Orders from './pages/staff/Orders.jsx'
 import Imports from './pages/staff/Imports.jsx'
+import CompanyPayments from './pages/staff/CompanyPayments.jsx'
 import Prices from './pages/Prices.jsx'
 
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
   const role = auth.user.role
   const canReports = role === 'admin' || auth.user.can_view_reports
   const canDash = role === 'admin' || auth.user.can_view_dashboard
+  const canPay = role === 'admin' || auth.user.can_view_payments
 
   return (
     <Routes>
@@ -62,6 +64,7 @@ export default function App() {
             <Route path="/orders" element={<Orders />} />
             <Route path="/stock" element={<Stock />} />
             <Route path="/imports" element={<Imports />} />
+            {canPay && <Route path="/payments" element={<CompanyPayments />} />}
             {role === 'admin' && <Route path="/money" element={<Money />} />}
             {role === 'admin' && <Route path="/reconcile" element={<Reconcile />} />}
             {canReports && <Route path="/reports" element={<Reports />} />}

@@ -130,6 +130,10 @@ export const api = {
   imeiLookup: (imei) => USE_MOCK ? mock.imeiLookup(imei) : http('/catalog/imei/' + encodeURIComponent(imei)),
   modelHistory: (model) => USE_MOCK ? mock.empty({ model, brand: '', available: 0, total: 0, purchased: { units: 0, value: 0 }, sold: { units: 0, value: 0 }, purchases: [], sales: [] }) : http('/catalog/model-history?model=' + encodeURIComponent(model)),
   stockSummary: () => USE_MOCK ? mock.stockSummary() : http('/catalog/stock-summary'),
+  payables: (status) => USE_MOCK ? mock.empty({ rows: [], summary: [], totals: { outstanding: 0, overdue: 0, due_7: 0, bills: 0 } }) : http('/payables?status=' + (status || 'outstanding')),
+  payableBrandTerms: () => USE_MOCK ? mock.empty({ brands: [] }) : http('/payables/brand-terms'),
+  savePayableBrandTerm: (body) => USE_MOCK ? mock.empty({ ok: true }) : http('/payables/brand-terms', { method: 'PUT', body }),
+  savePayableBill: (body) => USE_MOCK ? mock.empty({ ok: true }) : http('/payables/bill', { method: 'POST', body }),
 
   users: () => USE_MOCK ? mock.list('users') : http('/users'),
   saveUser: (u) => USE_MOCK ? mock.save('users', u)
