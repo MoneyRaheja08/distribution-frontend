@@ -18,7 +18,7 @@ const today = () => new Date().toISOString().slice(0, 10)
 const GROUPS = [
   ['Collect', [['followup', 'Follow-up'], ['beat', 'Beat sheet'], ['collections', 'Collections'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['cashflow', 'Cash forecast'], ['colleff', 'Collector efficiency']]],
   ['Sales', [['planner', 'Stock planner'], ['daily', 'Daily sales'], ['sales', 'Dealer × Model'], ['purchasesr', 'Purchases'], ['mom', 'Month vs month'], ['catmix', 'Category mix'], ['price', 'Price realisation'], ['inactive', 'Lost dealers'], ['billspdf', 'PDF bills'], ['purchases', 'Brand buys']]],
-  ['Profit', [['profit', 'Profit'], ['profit2', 'Profit 2 · Real'], ['scheme', 'Scheme tracker'], ['dscore', 'Dealer scorecard'], ['trend', 'Credit trend'], ['scorecard', 'Brand scorecard'], ['top', 'Top performers'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']]],
+  ['Profit', [['profit', 'Profit'], ['profit2', 'Profit 2 · Real'], ['pbd', 'Profit by dealer'], ['scheme', 'Scheme tracker'], ['dscore', 'Dealer scorecard'], ['trend', 'Credit trend'], ['scorecard', 'Brand scorecard'], ['top', 'Top performers'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']]],
   ['Daily', [['digest', 'WhatsApp digest']]],
 ]
 const NO_DATES = new Set(['ageing', 'billage', 'cashflow', 'inactive', 'trend', 'mom', 'scheme', 'digest', 'followup', 'daily', 'planner'])
@@ -77,6 +77,7 @@ export default function Reports() {
       {tab === 'purchases' && <PurchaseBrandReport from={from} to={to} />}
       {tab === 'profit' && <ProfitReport from={from} to={to} />}
       {tab === 'profit2' && <Profit2 from={from} to={to} />}
+      {tab === 'pbd' && <ProfitByDealer from={from} to={to} />}
       {tab === 'scorecard' && <BrandScorecard from={from} to={to} />}
       {tab === 'top' && <TopPerformers from={from} to={to} />}
       {tab === 'svc' && <SalesVsColl from={from} to={to} />}
@@ -339,6 +340,33 @@ function ProfitReport({ from, to }) {
           <div key={i} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
             <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{x.model}</span><span className={'font-bold shrink-0 ' + (x.margin >= 0 ? 'text-brand-700' : 'text-red-600')}>{inr(x.margin)}</span></div>
             <div className="text-[10px] text-slate-400 mt-0.5">{x.brand} · {x.qty} sold · sale {inr(x.sale)} · cost {inr(x.cost)}</div>
+          </div>
+        ))}
+      </Section>
+    </>
+  )
+}
+
+
+function ProfitByDealer({ from, to }) {
+  const [r, setR] = useState(null)
+  const [brand, setBrand] = useState('')
+  const [brands, setBrands] = useState([])
+  useEffect(() => { setR(null); api.reportProfitByDealer(from, to, brand).then((x) => { setR(x); if (x.brands) setBrands(x.brands) }) }, [from, to, brand])
+  if (!r) return <SkeletonList rows={5} />
+  return (
+    <>
+      <BrandPick value={brand} onChange={setBrand} brands={brands} />
+      <Big label={`Margin · ${brand || 'All brands'} · ${from} to ${to} · ${r.units} unit(s) · ${r.total_margin_pct}%`} value={inr(r.total_margin)} />
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="bg-white border border-slate-200 rounded-xl p-3"><div className="text-[10px] uppercase tracking-wide text-slate-400">Sale value</div><div className="font-display text-lg font-bold">{inr(r.total_sale)}</div></div>
+        <div className="bg-white border border-slate-200 rounded-xl p-3"><div className="text-[10px] uppercase tracking-wide text-slate-400">Cost</div><div className="font-display text-lg font-bold">{inr(r.total_cost)}</div></div>
+      </div>
+      <Section title="Margin by dealer" action={<ExportBtn onClick={() => exportSheet('profit-by-dealer.xlsx', [['Dealer', 'Bills', 'Units', 'Sale', 'Cost', 'Margin', 'Margin %'], ...r.rows.map((x) => [x.dealer, x.bills, x.units, x.sale, x.cost, x.margin, x.margin_pct]), ['Total', '', r.units, r.total_sale, r.total_cost, r.total_margin, r.total_margin_pct]], { money: [3, 4, 5], sheet: 'Profit by dealer' })} />}>
+        {r.rows.length === 0 ? <Row2 a="No sales in range" b="" /> : r.rows.map((x, i) => (
+          <div key={i} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
+            <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{x.dealer}</span><span className={'font-bold shrink-0 ' + (x.margin >= 0 ? 'text-brand-700' : 'text-red-600')}>{inr(x.margin)}</span></div>
+            <div className="text-[10px] text-slate-400 mt-0.5">{x.units} units · {x.bills} bills · sale {inr(x.sale)} · cost {inr(x.cost)} · {x.margin_pct}%</div>
           </div>
         ))}
       </Section>

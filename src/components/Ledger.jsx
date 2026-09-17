@@ -121,6 +121,13 @@ export function LedgerTable({ entries = [], onDelete, onBill }) {
           </div>
         )
       })}
+      <div className="flex items-center px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border-t-2 border-slate-200 dark:border-slate-700 text-[13px] font-bold">
+        <div className="flex-1 text-slate-700 dark:text-slate-200">Total</div>
+        <div className="w-20 text-right text-slate-900 dark:text-slate-100">{inr(entries.reduce((s, e) => s + (e.debit || 0), 0))}</div>
+        <div className="w-20 text-right text-brand-700 dark:text-brand-400">{inr(entries.reduce((s, e) => s + (e.credit || 0), 0))}</div>
+        <div className="w-24 text-right text-slate-900 dark:text-slate-100">{inr(entries[entries.length - 1]?.balance || 0)}</div>
+        {onDelete && <div className="w-7" />}
+      </div>
     </div>
   )
 }
