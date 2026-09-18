@@ -43,6 +43,7 @@ export default function Shell() {
   }
   const onToggleTheme = () => setDark(toggleTheme())
   const role = auth.user.role
+  const dcCompany = company?.kind === 'daily_collections'
   const showTheme = role === 'collector'
   let tabs = [...(role === 'collector' ? NAV.collector : NAV.staff)]
   if (role === 'manager') tabs = tabs.filter(([to]) => to !== '/money')  // reconciliation is admin-only
@@ -53,6 +54,7 @@ export default function Shell() {
   if (role === 'admin' || auth.user.can_view_payments) tabs.push(['/payments', 'Payments', CreditCard])
   if (role === 'admin') tabs.push(['/users', 'Users', Users])
   if (role !== 'collector') tabs.push(['/imports', 'Imports', UploadCloud])
+  if (dcCompany) tabs = []
   const subtitle = role === 'collector' ? 'Collector' : role === 'admin' ? 'Admin' : 'Manager'
   const onLogout = () => { logout(); nav('/') }
 

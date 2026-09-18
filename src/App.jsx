@@ -23,6 +23,8 @@ import Orders from './pages/staff/Orders.jsx'
 import Imports from './pages/staff/Imports.jsx'
 import CompanyPayments from './pages/staff/CompanyPayments.jsx'
 import Prices from './pages/Prices.jsx'
+import DailyCollections from './pages/dc/DailyCollections.jsx'
+import DcHub from './pages/dc/DcHub.jsx'
 
 export default function App() {
   const { auth, company } = useAuth()
@@ -45,7 +47,9 @@ export default function App() {
   return (
     <Routes>
       <Route element={<Shell />}>
-        {role === 'collector' ? (
+        {company.kind === 'daily_collections' ? (
+          <Route path="*" element={<DcHub />} />
+        ) : role === 'collector' ? (
           <>
             <Route path="/" element={<Beat />} />
             <Route path="/dealer/:id" element={<Dealer />} />

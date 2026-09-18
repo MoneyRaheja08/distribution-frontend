@@ -10,6 +10,7 @@ export default function CompanyPicker() {
   const [list, setList] = useState(null)
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
+  const [dcKind, setDcKind] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const load = () => api.companies().then(setList).catch(() => setList([]))
@@ -18,7 +19,7 @@ export default function CompanyPicker() {
   const create = async () => {
     if (!name.trim()) return toast.error('Enter a company name')
     setBusy(true)
-    try { await api.createCompany(name.trim()); setName(''); setAdding(false); await load(); toast.success('Company added') }
+    try { await api.createCompany(name.trim(), dcKind ? 'daily_collections' : 'distribution'); setName(''); setDcKind(false); setAdding(false); await load(); toast.success('Company added') }
     catch (e) { toast.error(e.message) } finally { setBusy(false) }
   }
 
@@ -61,6 +62,10 @@ export default function CompanyPicker() {
                   <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Company name"
                     onKeyDown={(e) => e.key === 'Enter' && create()}
                     className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-base mb-2 outline-none transition-colors focus:border-brand-500" />
+                  <label className="flex items-center gap-2 text-[13px] font-semibold text-slate-600 mb-2 cursor-pointer">
+                    <input type="checkbox" data-testid="dc-company-kind" checked={dcKind} onChange={(e) => setDcKind(e.target.checked)} className="w-4 h-4 accent-brand-600" />
+                    Daily Collections company (separate — won't touch your dealer data)
+                  </label>
                   <div className="flex gap-2">
                     <button onClick={() => { setAdding(false); setName('') }} className="flex-1 border border-slate-200 text-slate-600 font-semibold py-2.5 rounded-xl text-[13px] hover:bg-slate-50 transition-colors">Cancel</button>
                     <button onClick={create} disabled={busy} className="flex-1 bg-gradient-to-b from-brand-500 to-brand-700 hover:from-brand-400 hover:to-brand-600 text-white font-semibold py-2.5 rounded-xl text-[13px] flex items-center justify-center gap-1 shadow-glow disabled:opacity-60 transition-all">
