@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { LogOut, LayoutDashboard, Gauge, Store, Package, Tag, Wallet, ClipboardList, BarChart3, ClipboardCheck, FileBarChart, Users, ShoppingCart, Moon, Sun, UploadCloud, CreditCard } from 'lucide-react'
+import { LogOut, LayoutDashboard, Gauge, Store, Package, Tag, Wallet, ClipboardList, BarChart3, ClipboardCheck, FileBarChart, Users, ShoppingCart, Moon, Sun, UploadCloud, CreditCard, Clock, LayoutGrid, Receipt, Lock, CalendarDays } from 'lucide-react'
+import { CRUD } from '../pages/dc/modules.js'
 import { useRef, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
@@ -54,7 +55,10 @@ export default function Shell() {
   if (role === 'admin' || auth.user.can_view_payments) tabs.push(['/payments', 'Payments', CreditCard])
   if (role === 'admin') tabs.push(['/users', 'Users', Users])
   if (role !== 'collector') tabs.push(['/imports', 'Imports', UploadCloud])
-  if (dcCompany) tabs = []
+  if (dcCompany) tabs = [['/', 'Home', LayoutDashboard], ['/collections', 'Bills', Wallet], ['/pending', 'Pending', Clock], ['/reports', 'Reports', BarChart3], ['/more', 'More', LayoutGrid]]
+  const sideTabs = dcCompany
+    ? [...tabs.slice(0, 3), ['/expenses', 'Expenses', Receipt], ['/dayclose', 'Day close', Lock], tabs[3], ...(role === 'admin' ? [['/calendar', 'Month view', CalendarDays]] : []), ...Object.entries(CRUD).map(([k, m]) => ['/m/' + k, m.title, m.icon])]
+    : tabs
   const subtitle = role === 'collector' ? 'Collector' : role === 'admin' ? 'Admin' : 'Manager'
   const onLogout = () => { logout(); nav('/') }
 
@@ -73,7 +77,7 @@ export default function Shell() {
             </div>
           </div>
           <nav className="flex-1 overflow-y-auto p-3 space-y-1 relative">
-            {tabs.map(([to, label, Icon]) => (
+            {sideTabs.map(([to, label, Icon]) => (
               <NavLink key={to} to={to} end
                 className={({ isActive }) =>
                   'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all ' +

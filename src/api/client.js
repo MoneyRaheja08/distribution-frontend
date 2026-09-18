@@ -63,6 +63,7 @@ export const api = {
   dcDay: (date) => USE_MOCK ? mock.empty({}) : http('/dc/day' + (date ? '?date=' + date : '')),
   dcSaveRecon: (body) => USE_MOCK ? mock.empty({ ok: true }) : http('/dc/recon', { method: 'PUT', body }),
   dcReports: (frm, to) => USE_MOCK ? mock.empty({ totals: {}, by_pay: {}, by_day: [], by_staff: [], by_category: {} }) : http('/dc/reports?frm=' + frm + '&to=' + to),
+  dcCalendar: (month) => USE_MOCK ? mock.empty({ days: [], total: 0, bills: 0, profit: 0 }) : http('/dc/calendar?month=' + month),
   dcList: (name) => USE_MOCK ? mock.empty({ rows: [] }) : http('/dc/coll/' + name),
   dcAdd: (name, body) => USE_MOCK ? mock.empty({}) : http('/dc/coll/' + name, { method: 'POST', body }),
   dcPatch: (name, id, body) => USE_MOCK ? mock.empty({ ok: true }) : http('/dc/coll/' + name + '/' + id, { method: 'PATCH', body }),
