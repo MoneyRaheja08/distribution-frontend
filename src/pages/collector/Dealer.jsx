@@ -20,7 +20,8 @@ export default function Dealer() {
   const [led, setLed] = useState(null)
   const [visited, setVisited] = useState(false)
   const [marking, setMarking] = useState(false)
-  const { company } = useAuth()
+  const { company, auth } = useAuth()
+  const canCollect = auth.user.role !== 'collector' || !auth.user.block_collect
   const shareStatement = async () => {
     if (!led) return
     const blob = await renderLedgerImage({ company: company?.name, dealer: led.dealer, outstanding: led.outstanding, ageing: led.ageing, lastPayment: led.last_payment, entries: led.entries })
@@ -59,9 +60,9 @@ export default function Dealer() {
 
       {o > 0 && (
         <div className="flex gap-2 mt-3">
-          <button onClick={() => nav('/collect/' + d.id)} className="flex-1 bg-gradient-to-b from-brand-500 to-brand-700 hover:from-brand-400 hover:to-brand-600 text-white font-semibold py-3.5 rounded-xl shadow-glow transition-all">
+          {canCollect && <button onClick={() => nav('/collect/' + d.id)} className="flex-1 bg-gradient-to-b from-brand-500 to-brand-700 hover:from-brand-400 hover:to-brand-600 text-white font-semibold py-3.5 rounded-xl shadow-glow transition-all">
             Record collection
-          </button>
+          </button>}
           {d.phone && <a href={waLink(d.phone, reminderText(d.name, o, led ? led.ageing : d.ageing))} target="_blank" rel="noreferrer" className="flex-1 text-center bg-[#25D366] text-white font-semibold py-3.5 rounded-xl">WhatsApp</a>}
         </div>
       )}

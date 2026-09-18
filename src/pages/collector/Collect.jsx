@@ -3,11 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Loader2, Check } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { inr, outstanding } from '../../lib/format.js'
+import { useAuth } from '../../auth/AuthContext.jsx'
 import { Spin, BackBtn, Field } from '../../components/ui.jsx'
 
 export default function Collect() {
   const { id } = useParams()
   const nav = useNavigate()
+  const { auth } = useAuth()
   const [d, setD] = useState(null)
   const [amt, setAmt] = useState('')
   const [mode, setMode] = useState('Cash')
@@ -19,7 +21,9 @@ export default function Collect() {
 
   useEffect(() => { api.dealer(id).then(setD) }, [id])
   if (!d) return <Spin />
-
+  if (auth.user.role === 'collector' && auth.user.block_collect) {
+    return <div><BackBtn label="Back" /><div className="mt-4 text-[13px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-3" data-testid="collect-blocked">Recording collections is disabled for your account. Please contact your admin.</div></div>
+  }
   const o = outstanding(d)
 
   const save = async () => {
