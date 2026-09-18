@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Plus, CalendarDays } from 'lucide-react'
+import { ArrowRight, Plus, CalendarDays, Users } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { inr } from '../../lib/format.js'
 import { useAuth } from '../../auth/AuthContext.jsx'
@@ -65,6 +65,13 @@ export default function DcHome() {
               <div className="h-9 w-9 rounded-xl flex items-center justify-center text-white mb-2.5 bg-brand-600"><CalendarDays size={17} /></div>
               <div className="text-[14px] font-bold text-slate-900 flex items-center justify-between">Month view<ArrowRight size={14} className="text-slate-300 group-hover:text-brand-600 group-hover:translate-x-0.5 transition-all" /></div>
               <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">Heat-map of slow & strong days</div>
+            </button>
+          )}
+          {admin && (
+            <button data-testid="dc-quick-staff" onClick={() => nav('/users')} className="group text-left bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-soft hover:shadow-lift hover:-translate-y-0.5 transition-all">
+              <div className="h-9 w-9 rounded-xl flex items-center justify-center text-white mb-2.5 bg-indigo-500"><Users size={17} /></div>
+              <div className="text-[14px] font-bold text-slate-900 flex items-center justify-between">Staff<ArrowRight size={14} className="text-slate-300 group-hover:text-brand-600 group-hover:translate-x-0.5 transition-all" /></div>
+              <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">Manage logins, PINs & roles</div>
             </button>
           )}
         </div>
