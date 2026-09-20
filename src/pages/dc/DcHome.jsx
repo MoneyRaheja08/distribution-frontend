@@ -14,6 +14,8 @@ export default function DcHome() {
   const nav = useNavigate()
   const admin = auth.user.role === 'admin'
   const seesAll = ['admin', 'manager'].includes(auth.user.role)
+  const [perms, setPerms] = useState({})
+  const can = (k) => admin || perms[k] !== false
   const [day, setDay] = useState(null)
   const [pend, setPend] = useState(null)
   const [bills, setBills] = useState(null)
@@ -25,6 +27,7 @@ export default function DcHome() {
     api.dcPending('?frm=' + from + '&to=' + today()).then(setPend)
     api.dcBills('?date=' + today()).then((r) => setBills(r.rows || []))
     if (auth.user.role === 'admin') api.dcApprovals().then((r) => setApprovals(r.count || 0)).catch(() => {})
+    if (auth.user.role !== 'admin') api.dcMyPerms().then((r) => setPerms(r.perms || {})).catch(() => {})
   }
   useEffect(load, []) // eslint-disable-line
   if (!day) return <Spin />
@@ -50,7 +53,7 @@ export default function DcHome() {
 
       <Section title="Quick actions">
         <div className="grid grid-cols-2 gap-2.5">
-          {CORE.map(([to, l, Icon, hint, tone]) => (
+          {CORE.filter(([to]) => can(to.slice(1))).map(([to, l, Icon, hint, tone]) => (
             <button key={to} data-testid={'dc-quick-' + l.toLowerCase().replace(' ', '')} onClick={() => nav(to)}
               className="group text-left bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-soft hover:shadow-lift hover:-translate-y-0.5 transition-all">
               <div className={'h-9 w-9 rounded-xl flex items-center justify-center text-white mb-2.5 ' + tone}><Icon size={17} /></div>
@@ -58,16 +61,16 @@ export default function DcHome() {
               <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">{hint}</div>
             </button>
           ))}
-          <button data-testid="dc-quick-cash" onClick={() => nav('/cash')} className="group text-left bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-soft hover:shadow-lift hover:-translate-y-0.5 transition-all">
+          {can('cash') && <button data-testid="dc-quick-cash" onClick={() => nav('/cash')} className="group text-left bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-soft hover:shadow-lift hover:-translate-y-0.5 transition-all">
             <div className="h-9 w-9 rounded-xl flex items-center justify-center text-white mb-2.5 bg-emerald-600"><HandCoins size={17} /></div>
             <div className="text-[14px] font-bold text-slate-900 flex items-center justify-between">Cash in hand<ArrowRight size={14} className="text-slate-300 group-hover:text-brand-600 group-hover:translate-x-0.5 transition-all" /></div>
             <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">{admin ? 'Every staff drawer & handovers' : 'Your live cash drawer'}</div>
-          </button>
-          <button data-testid="dc-quick-exchange" onClick={() => nav('/exchanges')} className="group text-left bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-soft hover:shadow-lift hover:-translate-y-0.5 transition-all">
+          </button>}
+          {can('exchange') && <button data-testid="dc-quick-exchange" onClick={() => nav('/exchanges')} className="group text-left bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-soft hover:shadow-lift hover:-translate-y-0.5 transition-all">
             <div className="h-9 w-9 rounded-xl flex items-center justify-center text-white mb-2.5 bg-fuchsia-500"><Repeat size={17} /></div>
             <div className="text-[14px] font-bold text-slate-900 flex items-center justify-between">Exchange<ArrowRight size={14} className="text-slate-300 group-hover:text-brand-600 group-hover:translate-x-0.5 transition-all" /></div>
             <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">Trade-ins, resale & Godown-1</div>
-          </button>
+          </button>}
           <button data-testid="dc-quick-more" onClick={() => nav('/more')} className="text-left bg-slate-900 text-white rounded-2xl p-3.5 shadow-soft hover:-translate-y-0.5 transition-all">
             <div className="flex flex-wrap gap-1 mb-2.5">{Object.values(CRUD).slice(0, 6).map((m, i) => <span key={i} className={'h-3 w-3 rounded-full ' + m.tone} />)}</div>
             <div className="text-[14px] font-bold">{Object.keys(CRUD).length} more tools</div>
