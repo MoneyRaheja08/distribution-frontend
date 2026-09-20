@@ -61,7 +61,7 @@ function CollectSheet({ b, onClose, onDone }) {
       <div className="flex justify-between text-[13px] bg-amber-50 border border-amber-100 rounded-xl px-3.5 py-2.5 mb-4"><span className="text-amber-800">Pending on bill {b.bill_no ? '#' + b.bill_no : ''}</span><span className="font-bold text-amber-900">{inr(b.pending)}</span></div>
       <Field label="Amount received"><input data-testid="dc-collect-amt" autoFocus className={inp + ' text-2xl font-display font-bold py-3'} type="number" inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value)} /></Field>
       <div className="text-[12px] font-semibold text-slate-600 mt-4 mb-1.5">Payment mode</div>
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="grid grid-cols-4 gap-1.5">
         {MODES.map(([k, l, bar]) => (
           <button key={k} data-testid={'dc-collect-mode-' + k} onClick={() => setMode(k)} className={'rounded-xl py-2 text-[12px] font-bold border transition-all ' + (mode === k ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200')}>
             <span className={'mx-auto mb-1 block h-1.5 w-1.5 rounded-full ' + bar} />{l}

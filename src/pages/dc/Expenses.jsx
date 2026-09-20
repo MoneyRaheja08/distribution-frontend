@@ -4,7 +4,7 @@ import { toast } from '../../lib/toast.js'
 import { inr } from '../../lib/format.js'
 import { Spin, Modal } from '../../components/ui.jsx'
 import { confirmDialog } from '../../lib/confirm.js'
-import { Hero, ListCard, Row, Fab, PageHead, DateNav, Field, inp, PrimaryBtn, today, niceDate } from './bits.jsx'
+import { Hero, ListCard, Row, Chip, Fab, PageHead, DateNav, Field, inp, PrimaryBtn, today, niceDate } from './bits.jsx'
 
 const CATS = ['Tea & snacks', 'Transport', 'Salary advance', 'Electricity', 'Rent', 'Repairs', 'Stationery', 'Other']
 
@@ -24,8 +24,8 @@ export default function Expenses() {
           <div className="mt-4">
             <ListCard empty="No expenses recorded for this day." testid="dc-exp-list">
               {data.rows.map((e) => (
-                <Row key={e.id} title={e.category || 'Expense'} sub={[e.paid_by && 'paid by ' + e.paid_by, e.note, e.staff].filter(Boolean).join(' · ')} tone="bg-rose-500" onDelete={() => del(e)}
-                  right={<div className="text-[15px] font-bold text-rose-700">− {inr(e.amount)}</div>} />
+                <Row key={e.id} title={e.category || 'Expense'} sub={[e.paid_by && 'paid by ' + e.paid_by, e.note, e.staff].filter(Boolean).join(' · ')} tone={e.status === 'pending' ? 'bg-amber-400' : 'bg-rose-500'} onDelete={() => del(e)}
+                  right={<div className="text-right"><div className="text-[15px] font-bold text-rose-700">− {inr(e.amount)}</div>{e.status === 'pending' && <Chip tone="text-amber-800 bg-amber-100 ring-amber-200">awaiting approval</Chip>}</div>} />
               ))}
             </ListCard>
           </div>

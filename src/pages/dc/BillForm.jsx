@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Lock } from 'lucide-react'
+import { Check, Lock, Repeat } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { toast } from '../../lib/toast.js'
 import { inr } from '../../lib/format.js'
 import { Modal } from '../../components/ui.jsx'
 import { inp, Field, MODES, PrimaryBtn } from './bits.jsx'
 
-const blank = { bill_no: '', customer: '', phone: '', brand: '', model: '', total: '', cash: '', card: '', upi: '', finance: '', cheque: '', nlc: '', pending: '', note: '' }
+const blank = { bill_no: '', customer: '', phone: '', brand: '', model: '', total: '', cash: '', card: '', upi: '', finance: '', nlc: '', pending: '', note: '' }
 
 export default function BillForm({ date, admin, bill, onClose, onSaved }) {
   const [f, setF] = useState(() => bill ? { ...blank, ...Object.fromEntries(Object.entries(bill).filter(([k]) => k in blank).map(([k, v]) => [k, v === 0 ? '' : String(v ?? '')])), model: bill.items?.[0]?.model || '', brand: bill.items?.[0]?.brand || '', pending: String(bill.pending || '') } : blank)
+  const [exOn, setExOn] = useState(false)
+  const [ex, setEx] = useState({ brand: '', model: '', value: '', note: '' })
   const [busy, setBusy] = useState(false)
   const [left, setLeft] = useState(() => bill ? Math.max(0, Math.floor(bill.editable_until - Date.now() / 1000)) : null)
   useEffect(() => {
@@ -19,6 +21,7 @@ export default function BillForm({ date, admin, bill, onClose, onSaved }) {
   }, [bill])
   const expired = bill && left === 0
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
+  const setE = (k, v) => setEx((p) => ({ ...p, [k]: v }))
   const paid = useMemo(() => MODES.reduce((s, [k]) => s + (+f[k] || 0), 0), [f])
   const total = +f.total || 0
   const autoPending = Math.max(0, total - paid)
@@ -36,7 +39,10 @@ export default function BillForm({ date, admin, bill, onClose, onSaved }) {
         items: f.model || f.brand ? [{ brand: f.brand, model: f.model, qty: 1 }] : [] }
       MODES.forEach(([k]) => { body[k] = +f[k] || 0 })
       if (bill) { await api.dcUpdateBill(bill.id, body); toast.success('Bill updated') }
-      else { await api.dcCreateBill({ ...body, date }); toast.success('Bill saved') }
+      else {
+        if (exOn && (ex.model || ex.brand)) body.exchange = { brand: ex.brand, model: ex.model, note: ex.note, value: +ex.value || 0 }
+        await api.dcCreateBill({ ...body, date }); toast.success('Bill saved')
+      }
       onSaved()
     } catch (e) { toast.error(e.message) } finally { setBusy(false) }
   }
@@ -77,6 +83,25 @@ export default function BillForm({ date, admin, bill, onClose, onSaved }) {
         </div>
         {over > 0 && <div className="text-[11.5px] text-red-600 font-semibold mt-2">Payments exceed total by {inr(over)}</div>}
       </div>
+
+      {!bill && (
+        <div className="mt-4 rounded-2xl border border-slate-200/80 p-3">
+          <button type="button" data-testid="dc-exchange-toggle" onClick={() => setExOn((v) => !v)} className="w-full flex items-center justify-between">
+            <span className="flex items-center gap-2 text-[13px] font-semibold text-slate-700"><Repeat size={15} className="text-brand-600" />Customer gave an item in exchange</span>
+            <span className={'w-11 h-6 rounded-full relative transition-colors ' + (exOn ? 'bg-emerald-600' : 'bg-slate-300')}><span className={'absolute top-0.5 w-5 h-5 bg-white rounded-full transition-all ' + (exOn ? 'left-[22px]' : 'left-0.5')} /></span>
+          </button>
+          {exOn && (
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <Field label="Old item brand"><input className={inp} placeholder="e.g. LG" value={ex.brand} onChange={(e) => setE('brand', e.target.value)} /></Field>
+              <Field label="Old item model"><input data-testid="dc-exchange-model" className={inp} placeholder="e.g. 1.5T AC" value={ex.model} onChange={(e) => setE('model', e.target.value)} /></Field>
+              <Field label="Est. take-in value"><input data-testid="dc-exchange-value" className={inp} type="number" inputMode="decimal" placeholder="₹ 0" value={ex.value} onChange={(e) => setE('value', e.target.value)} /></Field>
+              <Field label="Note"><input className={inp} placeholder="condition, etc." value={ex.note} onChange={(e) => setE('note', e.target.value)} /></Field>
+              <div className="col-span-2 text-[11px] text-slate-400">Resell it later from the Exchange screen — that money is credited to your cash in hand.</div>
+            </div>
+          )}
+        </div>
+      )}
+      {bill && bill.exchange && <div className="mt-3 text-[12px] text-slate-500 flex items-center gap-1.5"><Repeat size={13} className="text-brand-600" />Exchange item on this bill — manage it in the Exchange screen.</div>}
 
       <div className="grid grid-cols-2 gap-3 mt-4">
         {admin && <Field label="NLC / cost" hint="admin only"><input data-testid="dc-nlc" className={inp} type="number" inputMode="decimal" placeholder="₹ 0" value={f.nlc} onChange={(e) => set('nlc', e.target.value)} /></Field>}

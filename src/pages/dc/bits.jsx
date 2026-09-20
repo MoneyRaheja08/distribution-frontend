@@ -6,9 +6,8 @@ export const today = () => new Date().toISOString().slice(0, 10)
 export const MODES = [
   ['cash', 'Cash', 'bg-emerald-500', 'text-emerald-700 bg-emerald-50 ring-emerald-100'],
   ['card', 'Card', 'bg-sky-500', 'text-sky-700 bg-sky-50 ring-sky-100'],
-  ['upi', 'UPI', 'bg-violet-500', 'text-violet-700 bg-violet-50 ring-violet-100'],
+  ['upi', 'GPay', 'bg-violet-500', 'text-violet-700 bg-violet-50 ring-violet-100'],
   ['finance', 'Finance', 'bg-amber-500', 'text-amber-700 bg-amber-50 ring-amber-100'],
-  ['cheque', 'Cheque', 'bg-rose-500', 'text-rose-700 bg-rose-50 ring-rose-100'],
 ]
 
 export function niceDate(s) {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Plus, CalendarDays, Users } from 'lucide-react'
+import { ArrowRight, Plus, CalendarDays, Users, HandCoins, Repeat, ShieldCheck, ListChecks } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { inr } from '../../lib/format.js'
 import { useAuth } from '../../auth/AuthContext.jsx'
@@ -13,15 +13,18 @@ export default function DcHome() {
   const { auth } = useAuth()
   const nav = useNavigate()
   const admin = auth.user.role === 'admin'
+  const seesAll = ['admin', 'manager'].includes(auth.user.role)
   const [day, setDay] = useState(null)
   const [pend, setPend] = useState(null)
   const [bills, setBills] = useState(null)
+  const [approvals, setApprovals] = useState(0)
   const [adding, setAdding] = useState(false)
   const from = new Date(Date.now() - 120 * 86400000).toISOString().slice(0, 10)
   const load = () => {
     api.dcDay(today()).then(setDay)
     api.dcPending('?frm=' + from + '&to=' + today()).then(setPend)
     api.dcBills('?date=' + today()).then((r) => setBills(r.rows || []))
+    if (auth.user.role === 'admin') api.dcApprovals().then((r) => setApprovals(r.count || 0)).catch(() => {})
   }
   useEffect(load, []) // eslint-disable-line
   if (!day) return <Spin />
@@ -55,11 +58,36 @@ export default function DcHome() {
               <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">{hint}</div>
             </button>
           ))}
+          <button data-testid="dc-quick-cash" onClick={() => nav('/cash')} className="group text-left bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-soft hover:shadow-lift hover:-translate-y-0.5 transition-all">
+            <div className="h-9 w-9 rounded-xl flex items-center justify-center text-white mb-2.5 bg-emerald-600"><HandCoins size={17} /></div>
+            <div className="text-[14px] font-bold text-slate-900 flex items-center justify-between">Cash in hand<ArrowRight size={14} className="text-slate-300 group-hover:text-brand-600 group-hover:translate-x-0.5 transition-all" /></div>
+            <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">{admin ? 'Every staff drawer & handovers' : 'Your live cash drawer'}</div>
+          </button>
+          <button data-testid="dc-quick-exchange" onClick={() => nav('/exchanges')} className="group text-left bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-soft hover:shadow-lift hover:-translate-y-0.5 transition-all">
+            <div className="h-9 w-9 rounded-xl flex items-center justify-center text-white mb-2.5 bg-fuchsia-500"><Repeat size={17} /></div>
+            <div className="text-[14px] font-bold text-slate-900 flex items-center justify-between">Exchange<ArrowRight size={14} className="text-slate-300 group-hover:text-brand-600 group-hover:translate-x-0.5 transition-all" /></div>
+            <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">Trade-ins, resale & Godown-1</div>
+          </button>
           <button data-testid="dc-quick-more" onClick={() => nav('/more')} className="text-left bg-slate-900 text-white rounded-2xl p-3.5 shadow-soft hover:-translate-y-0.5 transition-all">
             <div className="flex flex-wrap gap-1 mb-2.5">{Object.values(CRUD).slice(0, 6).map((m, i) => <span key={i} className={'h-3 w-3 rounded-full ' + m.tone} />)}</div>
             <div className="text-[14px] font-bold">{Object.keys(CRUD).length} more tools</div>
             <div className="text-[11px] text-slate-400 mt-0.5">Reminders, price list, CRM…</div>
           </button>
+          {admin && (
+            <button data-testid="dc-quick-verify" onClick={() => nav('/verify')} className="group relative text-left bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-soft hover:shadow-lift hover:-translate-y-0.5 transition-all">
+              {approvals > 0 && <span data-testid="dc-verify-badge" className="absolute top-2.5 right-2.5 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-600 text-white text-[11px] font-bold flex items-center justify-center">{approvals}</span>}
+              <div className="h-9 w-9 rounded-xl flex items-center justify-center text-white mb-2.5 bg-rose-600"><ShieldCheck size={17} /></div>
+              <div className="text-[14px] font-bold text-slate-900 flex items-center justify-between">Verify<ArrowRight size={14} className="text-slate-300 group-hover:text-brand-600 group-hover:translate-x-0.5 transition-all" /></div>
+              <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">{approvals > 0 ? approvals + ' waiting for approval' : 'Expenses & resales to approve'}</div>
+            </button>
+          )}
+          {seesAll && (
+            <button data-testid="dc-quick-reconcile" onClick={() => nav('/reconcile')} className="group text-left bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-soft hover:shadow-lift hover:-translate-y-0.5 transition-all">
+              <div className="h-9 w-9 rounded-xl flex items-center justify-center text-white mb-2.5 bg-teal-600"><ListChecks size={17} /></div>
+              <div className="text-[14px] font-bold text-slate-900 flex items-center justify-between">Reconcile<ArrowRight size={14} className="text-slate-300 group-hover:text-brand-600 group-hover:translate-x-0.5 transition-all" /></div>
+              <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">Tick off bills & spot missing numbers</div>
+            </button>
+          )}
           {admin && (
             <button data-testid="dc-quick-calendar" onClick={() => nav('/calendar')} className="group text-left bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-soft hover:shadow-lift hover:-translate-y-0.5 transition-all">
               <div className="h-9 w-9 rounded-xl flex items-center justify-center text-white mb-2.5 bg-brand-600"><CalendarDays size={17} /></div>
