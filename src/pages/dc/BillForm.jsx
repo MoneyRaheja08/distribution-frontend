@@ -1,33 +1,53 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Lock, Repeat } from 'lucide-react'
+import { Check, Lock, Repeat, Plus, Trash2 } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { toast } from '../../lib/toast.js'
 import { inr } from '../../lib/format.js'
+import { useAuth } from '../../auth/AuthContext.jsx'
 import { Modal } from '../../components/ui.jsx'
 import { inp, Field, MODES, PrimaryBtn } from './bits.jsx'
 
-const blank = { bill_no: '', customer: '', phone: '', brand: '', model: '', total: '', cash: '', card: '', upi: '', finance: '', nlc: '', pending: '', note: '' }
+const OLD_ITEMS = ['OLD AC', 'OLD W/M', 'OLD LED', 'OLD REFRIGERATOR', 'OLD GEYSER', 'OLD INVERTER', 'OLD BATTERY', 'OLD M/W', 'OTHER']
+const num = (v) => (v === 0 || v == null ? '' : String(v))
+const emptyItem = () => ({ model: '', brand: '', category: '', nlc: '' })
+const emptyEx = () => ({ model: '', value: '', note: '' })
 
 export default function BillForm({ date, admin, bill, onClose, onSaved }) {
-  const [f, setF] = useState(() => bill ? { ...blank, ...Object.fromEntries(Object.entries(bill).filter(([k]) => k in blank).map(([k, v]) => [k, v === 0 ? '' : String(v ?? '')])), model: bill.items?.[0]?.model || '', brand: bill.items?.[0]?.brand || '', pending: String(bill.pending || '') } : blank)
-  const [exOn, setExOn] = useState(false)
-  const [ex, setEx] = useState({ brand: '', model: '', value: '', note: '' })
+  const { auth } = useAuth()
+  const [f, setF] = useState({
+    customer: bill?.customer || '', phone: bill?.phone || '', note: bill?.note || '',
+    total: num(bill?.total), cash: num(bill?.cash), card: num(bill?.card), upi: num(bill?.upi), finance: num(bill?.finance), pending: num(bill?.pending),
+  })
+  const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
+  const [items, setItems] = useState(() => {
+    if (bill && bill.items?.length) {
+      const arr = bill.items.map((i) => ({ model: i.model || '', brand: i.brand || '', category: i.category || '', nlc: num(i.nlc) }))
+      if (admin && bill.nlc && !arr[0].nlc) arr[0].nlc = String(bill.nlc)
+      return arr
+    }
+    return [emptyItem()]
+  })
+  const [exs, setExs] = useState([emptyEx()])
+  const [collectedBy, setCollectedBy] = useState(bill?.staff_id || (admin ? '' : auth.user.id))
+  const [users, setUsers] = useState([])
   const [busy, setBusy] = useState(false)
   const [left, setLeft] = useState(() => bill ? Math.max(0, Math.floor(bill.editable_until - Date.now() / 1000)) : null)
+  useEffect(() => { if (admin) api.dcUsers().then(setUsers).catch(() => {}) }, [admin])
   useEffect(() => {
     if (!bill) return
     const t = setInterval(() => setLeft(Math.max(0, Math.floor(bill.editable_until - Date.now() / 1000))), 1000)
     return () => clearInterval(t)
   }, [bill])
   const expired = bill && left === 0
-  const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
-  const setE = (k, v) => setEx((p) => ({ ...p, [k]: v }))
+  const upItem = (i, k, v) => setItems((a) => a.map((it, idx) => idx === i ? { ...it, [k]: v } : it))
+  const upEx = (i, k, v) => setExs((a) => a.map((e, idx) => idx === i ? { ...e, [k]: v } : e))
   const paid = useMemo(() => MODES.reduce((s, [k]) => s + (+f[k] || 0), 0), [f])
   const total = +f.total || 0
   const autoPending = Math.max(0, total - paid)
   const pending = f.pending === '' ? autoPending : +f.pending || 0
   const over = paid + pending - total
   const fillRest = (k) => set(k, String(Math.max(0, total - (paid - (+f[k] || 0)))))
+  const itemNlc = items.reduce((s, i) => s + (+i.nlc || 0), 0)
 
   const save = async () => {
     if (!(total > 0)) return toast.error('Enter a bill total')
@@ -35,12 +55,15 @@ export default function BillForm({ date, admin, bill, onClose, onSaved }) {
     if (expired) return toast.error('Bill is locked')
     setBusy(true)
     try {
-      const body = { bill_no: f.bill_no, customer: f.customer, phone: f.phone, note: f.note, total, pending, nlc: +f.nlc || 0,
-        items: f.model || f.brand ? [{ brand: f.brand, model: f.model, qty: 1 }] : [] }
-      MODES.forEach(([k]) => { body[k] = +f[k] || 0 })
+      const body = {
+        customer: f.customer, phone: f.phone, note: f.note, total, pending,
+        cash: +f.cash || 0, card: +f.card || 0, upi: +f.upi || 0, finance: +f.finance || 0,
+        items: items.filter((i) => i.model || i.brand || i.nlc).map((i) => ({ brand: i.brand, category: i.category, model: i.model, qty: 1, nlc: +i.nlc || 0 })),
+      }
+      if (admin && collectedBy) body.staff_id = collectedBy
       if (bill) { await api.dcUpdateBill(bill.id, body); toast.success('Bill updated') }
       else {
-        if (exOn && (ex.model || ex.brand)) body.exchange = { brand: ex.brand, model: ex.model, note: ex.note, value: +ex.value || 0 }
+        body.exchanges = exs.filter((e) => e.model).map((e) => ({ model: e.model, note: e.note, value: +e.value || 0 }))
         await api.dcCreateBill({ ...body, date }); toast.success('Bill saved')
       }
       onSaved()
@@ -58,11 +81,46 @@ export default function BillForm({ date, admin, bill, onClose, onSaved }) {
       <div className="grid grid-cols-2 gap-3">
         <Field label="Customer"><input data-testid="dc-customer" className={inp} placeholder="Walk-in" value={f.customer} onChange={(e) => set('customer', e.target.value)} /></Field>
         <Field label="Phone"><input className={inp} type="tel" placeholder="98xxxxxxxx" value={f.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
-        <Field label="Bill no"><input data-testid="dc-bill-no" className={inp} placeholder="#" value={f.bill_no} onChange={(e) => set('bill_no', e.target.value)} /></Field>
-        <Field label="Brand / Model"><input className={inp} placeholder="e.g. Haier 1.5T" value={f.model} onChange={(e) => set('model', e.target.value)} /></Field>
-        <div className="col-span-2">
-          <Field label="Bill total"><input data-testid="dc-total" className={inp + ' text-2xl font-display font-bold py-3'} type="number" inputMode="decimal" placeholder="₹ 0" value={f.total} onChange={(e) => set('total', e.target.value)} /></Field>
-        </div>
+        {admin ? (
+          <Field label="Collected by">
+            <select data-testid="dc-collected-by" className={inp} value={collectedBy} onChange={(e) => setCollectedBy(e.target.value)}>
+              <option value="">Me — {auth.user.name}</option>
+              {users.filter((u) => u.id !== auth.user.id).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </Field>
+        ) : (
+          <Field label="Collected by"><input className={inp + ' bg-slate-50 text-slate-500'} value={auth.user.name} disabled /></Field>
+        )}
+        <Field label="Bill number" hint="auto from series"><input data-testid="dc-bill-no" className={inp + ' bg-slate-50 text-slate-500'} value={bill ? bill.bill_no : 'Auto-assigned'} disabled /></Field>
+      </div>
+
+      <div className="mt-4">
+        <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-500 mb-1.5">Items</div>
+        {items.map((it, idx) => (
+          <div key={idx} className="rounded-xl border border-slate-200 p-2.5 mb-2">
+            <div className="flex gap-2 items-start">
+              <input data-testid={'dc-item-model-' + idx} className={inp} placeholder={'Model / product e.g. Samsung 55" TV'} value={it.model} onChange={(e) => upItem(idx, 'model', e.target.value)} />
+              {items.length > 1 && <button type="button" data-testid={'dc-item-del-' + idx} onClick={() => setItems((a) => a.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-rose-600 p-1.5 mt-0.5"><Trash2 size={16} /></button>}
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <input className={inp} placeholder="Brand" value={it.brand} onChange={(e) => upItem(idx, 'brand', e.target.value)} />
+              <input className={inp} placeholder="Category" value={it.category} onChange={(e) => upItem(idx, 'category', e.target.value)} />
+              {admin && <input data-testid={'dc-item-nlc-' + idx} className={inp + ' col-span-2'} type="number" inputMode="decimal" placeholder="NLC — cost of this item (₹)" value={it.nlc} onChange={(e) => upItem(idx, 'nlc', e.target.value)} />}
+            </div>
+          </div>
+        ))}
+        <button type="button" data-testid="dc-add-item" onClick={() => setItems((a) => [...a, emptyItem()])} className="text-[13px] font-bold text-brand-600 flex items-center gap-1"><Plus size={15} /> Add another item</button>
+      </div>
+
+      <div className="mt-4">
+        <Field label="Bill total"><input data-testid="dc-total" className={inp + ' text-2xl font-display font-bold py-3'} type="number" inputMode="decimal" placeholder="₹ 0" value={f.total} onChange={(e) => set('total', e.target.value)} /></Field>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-1.5">
+        {[['cash', 'Full Cash', 'border-emerald-300 text-emerald-700'], ['upi', 'Full GPay', 'border-sky-300 text-sky-700'], ['card', 'Full Card', 'border-violet-300 text-violet-700'], ['finance', 'Full Finance', 'border-amber-300 text-amber-700']].map(([k, l, c]) => (
+          <button key={k} type="button" data-testid={'dc-qf-' + k} onClick={() => setF((p) => ({ ...p, cash: '', card: '', upi: '', finance: '', pending: '', [k]: String(+p.total || 0) }))} className={'text-[12px] font-bold rounded-full px-3 py-1.5 border ' + c}>{l}</button>
+        ))}
+        <button type="button" data-testid="dc-qf-pending" onClick={() => set('pending', String(Math.max(0, total - (paid - (+f.pending || 0)))))} className="text-[12px] font-bold rounded-full px-3 py-1.5 border border-rose-300 text-rose-700">Rest → Pending</button>
       </div>
 
       <div className="mt-4 rounded-2xl bg-slate-50 border border-slate-200/80 p-3">
@@ -86,30 +144,24 @@ export default function BillForm({ date, admin, bill, onClose, onSaved }) {
 
       {!bill && (
         <div className="mt-4 rounded-2xl border border-slate-200/80 p-3">
-          <button type="button" data-testid="dc-exchange-toggle" onClick={() => setExOn((v) => !v)} className="w-full flex items-center justify-between">
-            <span className="flex items-center gap-2 text-[13px] font-semibold text-slate-700"><Repeat size={15} className="text-brand-600" />Customer gave an item in exchange</span>
-            <span className={'w-11 h-6 rounded-full relative transition-colors ' + (exOn ? 'bg-emerald-600' : 'bg-slate-300')}><span className={'absolute top-0.5 w-5 h-5 bg-white rounded-full transition-all ' + (exOn ? 'left-[22px]' : 'left-0.5')} /></span>
-          </button>
-          {exOn && (
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <Field label="Old item brand"><input className={inp} placeholder="e.g. LG" value={ex.brand} onChange={(e) => setE('brand', e.target.value)} /></Field>
-              <Field label="Old item model"><input data-testid="dc-exchange-model" className={inp} placeholder="e.g. 1.5T AC" value={ex.model} onChange={(e) => setE('model', e.target.value)} /></Field>
-              <Field label="Est. take-in value"><input data-testid="dc-exchange-value" className={inp} type="number" inputMode="decimal" placeholder="₹ 0" value={ex.value} onChange={(e) => setE('value', e.target.value)} /></Field>
-              <Field label="Note"><input className={inp} placeholder="condition, etc." value={ex.note} onChange={(e) => setE('note', e.target.value)} /></Field>
-              <div className="col-span-2 text-[11px] text-slate-400">Resell it later from the Exchange screen — that money is credited to your cash in hand.</div>
+          <div className="flex items-center gap-2 text-[13px] font-semibold text-slate-700 mb-2"><Repeat size={15} className="text-brand-600" />Exchange items <span className="text-[11px] text-slate-400 font-normal">(old items taken, if any)</span></div>
+          {exs.map((e, idx) => (
+            <div key={idx} className="grid grid-cols-2 gap-2 mb-2">
+              <select data-testid={'dc-ex-model-' + idx} className={inp} value={e.model} onChange={(ev) => upEx(idx, 'model', ev.target.value)}><option value="">— Select old item —</option>{OLD_ITEMS.map((o) => <option key={o} value={o}>{o}</option>)}</select>
+              <div className="flex gap-1"><input data-testid={'dc-ex-value-' + idx} className={inp} type="number" inputMode="decimal" placeholder="Est. value ₹" value={e.value} onChange={(ev) => upEx(idx, 'value', ev.target.value)} />{exs.length > 1 && <button type="button" onClick={() => setExs((a) => a.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-rose-600 px-1"><Trash2 size={15} /></button>}</div>
+              <input className={inp + ' col-span-2'} placeholder="Note (brand / condition)" value={e.note} onChange={(ev) => upEx(idx, 'note', ev.target.value)} />
             </div>
-          )}
+          ))}
+          <button type="button" data-testid="dc-add-exchange" onClick={() => setExs((a) => [...a, emptyEx()])} className="text-[13px] font-bold text-brand-600 flex items-center gap-1"><Plus size={15} /> Add exchange item</button>
+          <div className="text-[11px] text-slate-400 mt-1.5">Resell later from the Exchange screen — that money is credited to the seller's cash in hand.</div>
         </div>
       )}
-      {bill && bill.exchange && <div className="mt-3 text-[12px] text-slate-500 flex items-center gap-1.5"><Repeat size={13} className="text-brand-600" />Exchange item on this bill — manage it in the Exchange screen.</div>}
+      {bill && bill.exchanges?.length > 0 && <div className="mt-3 text-[12px] text-slate-500 flex items-center gap-1.5"><Repeat size={13} className="text-brand-600" />{bill.exchanges.length} exchange item(s) on this bill — manage them in the Exchange screen.</div>}
 
-      <div className="grid grid-cols-2 gap-3 mt-4">
-        {admin && <Field label="NLC / cost" hint="admin only"><input data-testid="dc-nlc" className={inp} type="number" inputMode="decimal" placeholder="₹ 0" value={f.nlc} onChange={(e) => set('nlc', e.target.value)} /></Field>}
-        <div className={admin ? '' : 'col-span-2'}><Field label="Note"><input className={inp} placeholder="optional" value={f.note} onChange={(e) => set('note', e.target.value)} /></Field></div>
-      </div>
-      {admin && total > 0 && +f.nlc > 0 && <div className="text-[12px] text-emerald-700 font-semibold mt-2">Profit on this bill: {inr(total - +f.nlc)}</div>}
+      <div className="mt-4"><Field label="Note"><input className={inp} placeholder="e.g. delivery pending" value={f.note} onChange={(e) => set('note', e.target.value)} /></Field></div>
+      {admin && total > 0 && itemNlc > 0 && <div className="text-[12px] text-emerald-700 font-semibold mt-2">Profit on this bill: {inr(total - itemNlc)}</div>}
 
-      <div className="mt-5"><PrimaryBtn testid="dc-add-bill" onClick={save} disabled={busy || expired}>{bill ? 'Update bill' : 'Save bill'} · {inr(total)}</PrimaryBtn></div>
+      <div className="mt-5"><PrimaryBtn testid="dc-add-bill" onClick={save} disabled={busy || expired}>{bill ? 'Update bill' : 'Add bill'} · {inr(total)}</PrimaryBtn></div>
     </Modal>
   )
 }

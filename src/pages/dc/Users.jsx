@@ -43,6 +43,7 @@ export default function Users() {
             onClick={() => setEditing(u)} onDelete={u.id === auth.user.id ? undefined : () => del(u)} right={<Pencil size={13} className="text-brand-600" />}>
             <div className="flex flex-wrap gap-1 mt-1.5">
               <Chip tone={roleTone(u.role)}>{roleLabel(u.role)}</Chip>
+              {u.series?.prefix && <Chip tone="text-brand-700 bg-brand-50 ring-brand-100">series {u.series.prefix}</Chip>}
               <Chip tone="text-slate-600 bg-slate-100 ring-slate-200">{permCount(u)}</Chip>
               {u.id === auth.user.id && <Chip tone="text-slate-600 bg-slate-100 ring-slate-200">You</Chip>}
             </div>
@@ -57,6 +58,7 @@ export default function Users() {
 
 function UserForm({ user, onClose, onSaved }) {
   const [f, setF] = useState({ name: user.name || '', pin: '', role: user.role || 'collector' })
+  const [series, setSeries] = useState({ prefix: user.series?.prefix || '', next: user.series?.next || 1, pad: user.series?.pad || 4 })
   const [perms, setPerms] = useState(() => Object.fromEntries(ALL_KEYS.map((k) => [k, (user.perms || {})[k] !== false])))
   const [busy, setBusy] = useState(false)
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
@@ -69,7 +71,7 @@ function UserForm({ user, onClose, onSaved }) {
     if (user.id && f.pin && f.pin.length !== 4) return toast.error('PIN must be 4 digits')
     setBusy(true)
     try {
-      const body = { name: f.name.trim(), role: f.role, perms, ...(f.pin ? { pin: f.pin } : {}) }
+      const body = { name: f.name.trim(), role: f.role, perms, series: { prefix: series.prefix, next: +series.next || 1, pad: +series.pad || 4 }, ...(f.pin ? { pin: f.pin } : {}) }
       if (user.id) await api.dcUpdateUser(user.id, body)
       else await api.dcCreateUser(body)
       toast.success('Saved'); onSaved()
@@ -95,6 +97,16 @@ function UserForm({ user, onClose, onSaved }) {
             ))}
           </div>
         </Field>
+      </div>
+
+      <div className="mt-4 rounded-2xl bg-slate-50 border border-slate-200/80 p-3">
+        <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-500 mb-2">Bill number series <span className="font-normal normal-case text-slate-400">— only admin can set</span></div>
+        <div className="grid grid-cols-3 gap-2">
+          <Field label="Prefix"><input data-testid="dc-series-prefix" className={inp} placeholder="AS" value={series.prefix} onChange={(e) => setSeries((s) => ({ ...s, prefix: e.target.value.toUpperCase() }))} /></Field>
+          <Field label="Start no"><input data-testid="dc-series-next" className={inp} type="number" value={series.next} onChange={(e) => setSeries((s) => ({ ...s, next: e.target.value }))} /></Field>
+          <Field label="Digits"><input data-testid="dc-series-pad" className={inp} type="number" value={series.pad} onChange={(e) => setSeries((s) => ({ ...s, pad: e.target.value }))} /></Field>
+        </div>
+        <div className="text-[11px] text-slate-400 mt-1.5">Next bill → <span className="font-semibold text-slate-600">{(series.prefix || '')}{String(Math.max(1, +series.next || 1)).padStart(Math.max(1, +series.pad || 4), '0')}</span></div>
       </div>
 
       {isAdmin ? (
