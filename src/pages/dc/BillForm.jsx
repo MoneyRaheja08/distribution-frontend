@@ -30,6 +30,11 @@ export default function BillForm({ date, admin, bill, onClose, onSaved }) {
   const [exs, setExs] = useState([emptyEx()])
   const [collectedBy, setCollectedBy] = useState(bill?.staff_id || (admin ? '' : auth.user.id))
   const [users, setUsers] = useState([])
+  const [mySeries, setMySeries] = useState({})
+  useEffect(() => { api.dcMyPerms().then((r) => setMySeries(r.series || {})).catch(() => {}) }, [])
+  const seriesFor = (id) => (admin && id ? (users.find((u) => u.id === id)?.series || {}) : mySeries)
+  const sr = seriesFor(collectedBy)
+  const nextNo = sr.prefix || sr.next ? (sr.prefix || '') + String(Math.max(1, +sr.next || 1)).padStart(Math.max(1, +sr.pad || 4), '0') : ''
   const [busy, setBusy] = useState(false)
   const [left, setLeft] = useState(() => bill ? Math.max(0, Math.floor(bill.editable_until - Date.now() / 1000)) : null)
   useEffect(() => { if (admin) api.dcUsers().then(setUsers).catch(() => {}) }, [admin])
@@ -91,7 +96,7 @@ export default function BillForm({ date, admin, bill, onClose, onSaved }) {
         ) : (
           <Field label="Collected by"><input className={inp + ' bg-slate-50 text-slate-500'} value={auth.user.name} disabled /></Field>
         )}
-        <Field label="Bill number" hint="auto from series"><input data-testid="dc-bill-no" className={inp + ' bg-slate-50 text-slate-500'} value={bill ? bill.bill_no : 'Auto-assigned'} disabled /></Field>
+        <Field label="Bill number" hint="auto from series"><input data-testid="dc-bill-no" className={inp + ' bg-slate-50 text-slate-500 font-semibold'} value={bill ? bill.bill_no : (nextNo || 'Auto-assigned')} disabled /></Field>
       </div>
 
       <div className="mt-4">

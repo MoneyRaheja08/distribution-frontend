@@ -311,9 +311,15 @@ function StatementModal({ dealer, onClose, onDone }) {
     catch (err) { setMsg(err.message) } finally { setBusy(false); if (fileRef.current) fileRef.current.value = '' }
   }
   const confirm = async () => {
-    setBusy(true)
-    await api.seedDealer(dealer.id, { opening: parsed.opening, opening_date: parsed.opening_date, bills: parsed.bills, payments: parsed.payments })
-    toast.success('Statement imported'); onDone()
+    setBusy(true); setMsg('')
+    try {
+      await api.seedDealer(dealer.id, { opening: parsed.opening, opening_date: parsed.opening_date, bills: parsed.bills, payments: parsed.payments })
+      toast.success('Statement imported'); onDone()
+    } catch (err) {
+      setMsg(err.message || 'Import failed'); toast.error(err.message || 'Import failed')
+    } finally {
+      setBusy(false)
+    }
   }
   return (
     <Modal title={'Import statement — ' + dealer.name} onClose={onClose}>
@@ -339,6 +345,7 @@ function StatementModal({ dealer, onClose, onDone }) {
             className="w-full bg-emerald-700 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60">
             {busy && <Loader2 size={16} className="animate-spin" />}Seed ledger for {dealer.name}
           </button>
+          {msg && <div className="text-[12px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mt-3">{msg}</div>}
         </>
       )}
     </Modal>

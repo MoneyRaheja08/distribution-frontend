@@ -77,7 +77,7 @@ export const api = {
   dcReconcile: (frm, to) => USE_MOCK ? mock.empty({ bills: [], receipts: [], missing_bill_nos: [], summary: {} }) : http('/dc/reconcile?frm=' + frm + '&to=' + to),
   dcCheckBill: (id, checked) => USE_MOCK ? mock.empty({ ok: true }) : http('/dc/bills/' + id + '/check', { method: 'PATCH', body: { checked } }),
   dcCheckReceipt: (id, checked) => USE_MOCK ? mock.empty({ ok: true }) : http('/dc/receipts/' + id + '/check', { method: 'PATCH', body: { checked } }),
-  dcMyPerms: () => USE_MOCK ? mock.empty({ role: 'admin', is_admin: true, perms: {} }) : http('/dc/my-perms'),
+  dcMyPerms: () => USE_MOCK ? mock.empty({ role: 'admin', is_admin: true, perms: {}, series: {} }) : http('/dc/my-perms'),
   dcUsers: () => USE_MOCK ? mock.empty([]) : http('/dc/users'),
   dcCreateUser: (body) => USE_MOCK ? mock.empty({}) : http('/dc/users', { method: 'POST', body }),
   dcUpdateUser: (id, body) => USE_MOCK ? mock.empty({}) : http('/dc/users/' + id, { method: 'PATCH', body }),
