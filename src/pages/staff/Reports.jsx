@@ -352,7 +352,14 @@ function ProfitByDealer({ from, to }) {
   const [r, setR] = useState(null)
   const [brand, setBrand] = useState('')
   const [brands, setBrands] = useState([])
-  useEffect(() => { setR(null); api.reportProfitByDealer(from, to, brand).then((x) => { setR(x); if (x.brands) setBrands(x.brands) }) }, [from, to, brand])
+  const [open, setOpen] = useState(null)
+  const [detail, setDetail] = useState(null)
+  useEffect(() => { setR(null); setOpen(null); api.reportProfitByDealer(from, to, brand).then((x) => { setR(x); if (x.brands) setBrands(x.brands) }) }, [from, to, brand])
+  const toggle = (dealer) => {
+    if (open === dealer) { setOpen(null); return }
+    setOpen(dealer); setDetail(null)
+    api.reportProfitByDealerDetail(from, to, dealer, brand).then(setDetail)
+  }
   if (!r) return <SkeletonList rows={5} />
   return (
     <>
@@ -364,9 +371,28 @@ function ProfitByDealer({ from, to }) {
       </div>
       <Section title="Margin by dealer" action={<ExportBtn onClick={() => exportSheet('profit-by-dealer.xlsx', [['Dealer', 'Bills', 'Units', 'Sale', 'Cost', 'Margin', 'Margin %'], ...r.rows.map((x) => [x.dealer, x.bills, x.units, x.sale, x.cost, x.margin, x.margin_pct]), ['Total', '', r.units, r.total_sale, r.total_cost, r.total_margin, r.total_margin_pct]], { money: [3, 4, 5], sheet: 'Profit by dealer' })} />}>
         {r.rows.length === 0 ? <Row2 a="No sales in range" b="" /> : r.rows.map((x, i) => (
-          <div key={i} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
-            <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{x.dealer}</span><span className={'font-bold shrink-0 ' + (x.margin >= 0 ? 'text-brand-700' : 'text-red-600')}>{inr(x.margin)}</span></div>
-            <div className="text-[10px] text-slate-400 mt-0.5">{x.units} units · {x.bills} bills · sale {inr(x.sale)} · cost {inr(x.cost)} · {x.margin_pct}%</div>
+          <div key={i} className="border-b border-slate-50 last:border-0">
+            <button data-testid={'pbd-dealer-' + i} onClick={() => toggle(x.dealer)} className="w-full text-left px-3.5 py-2.5 hover:bg-slate-50 transition-colors">
+              <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2 flex items-center gap-1"><span className="text-slate-400 w-3 inline-block">{open === x.dealer ? '▾' : '▸'}</span>{x.dealer}</span><span className={'font-bold shrink-0 ' + (x.margin >= 0 ? 'text-brand-700' : 'text-red-600')}>{inr(x.margin)}</span></div>
+              <div className="text-[10px] text-slate-400 mt-0.5 pl-4">{x.units} units · {x.bills} bills · sale {inr(x.sale)} · cost {inr(x.cost)} · {x.margin_pct}%</div>
+            </button>
+            {open === x.dealer && (
+              <div className="bg-slate-50/70 px-3.5 py-2 border-t border-slate-100" data-testid={'pbd-detail-' + i}>
+                {!detail ? <div className="text-[12px] text-slate-400 py-2">Loading billed items…</div>
+                  : (detail.rows || []).length === 0 ? <div className="text-[12px] text-slate-400 py-2">No line items found for this dealer in range.</div>
+                    : detail.rows.map((b, bi) => (
+                      <div key={bi} className="mb-2.5 last:mb-0">
+                        <div className="flex justify-between text-[12px] font-semibold text-slate-700"><span>Bill {b.bill_no} {b.date ? <span className="text-slate-400 font-normal">· {b.date}</span> : null}</span><span className={b.margin >= 0 ? 'text-brand-700' : 'text-red-600'}>{inr(b.margin)} · {b.margin_pct}%</span></div>
+                        {b.lines.map((ln, li) => (
+                          <div key={li} className="flex justify-between text-[11px] text-slate-500 pl-3 py-0.5">
+                            <span className="truncate pr-2">{ln.model}{ln.brand ? ' · ' + ln.brand : ''}{ln.qty > 1 ? ' ×' + ln.qty : ''}{ln.imei ? ' · ' + ln.imei : ''}</span>
+                            <span className="shrink-0 tabular-nums">sale {inr(ln.rate)} − NLC {inr(ln.nlc)} = <b className={ln.margin >= 0 ? 'text-brand-700' : 'text-red-600'}>{inr(ln.margin)}</b></span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+              </div>
+            )}
           </div>
         ))}
       </Section>
