@@ -4,7 +4,7 @@ import { Phone, MapPin, Check } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { inr, outstanding } from '../../lib/format.js'
 import { Spin, BackBtn } from '../../components/ui.jsx'
-import { LedgerHeader, LedgerTable } from '../../components/Ledger.jsx'
+import { LedgerHeader, LedgerTable, TargetBanner } from '../../components/Ledger.jsx'
 import { waLink, reminderText } from '../../lib/whatsapp.js'
 import { getPosition } from '../../lib/geo.js'
 import { renderLedgerImage } from '../../lib/ledgerImage.js'
@@ -52,6 +52,7 @@ export default function Dealer() {
         </div>
       </div>
 
+      {led && <TargetBanner targets={led.targets} />}
       <LedgerHeader name={d.name} outstanding={o} ageing={led ? led.ageing : d.ageing}
         creditLimit={d.credit_limit} lastPayment={led ? led.last_payment : d.last_payment} />
 

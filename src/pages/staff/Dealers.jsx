@@ -6,7 +6,7 @@ import { confirmDialog } from '../../lib/confirm.js'
 import { inr } from '../../lib/format.js'
 import { parseStatement, parseBulkBills, downloadBillsTemplate } from '../../lib/statement.js'
 import { Spin, SectionH, RowActions, Pill, Modal, Field, Select, SkeletonList, Card, EmptyState } from '../../components/ui.jsx'
-import { LedgerHeader, LedgerTable } from '../../components/Ledger.jsx'
+import { LedgerHeader, LedgerTable, TargetBanner } from '../../components/Ledger.jsx'
 import { useAuth } from '../../auth/AuthContext.jsx'
 import { waLink, reminderText } from '../../lib/whatsapp.js'
 import { getPosition } from '../../lib/geo.js'
@@ -156,6 +156,7 @@ function Ledger({ dealer, onBack }) {
           {visited ? 'Visited \u2713' : marking ? 'Locating\u2026' : 'Mark visited'}
         </button>
       </div>
+      <TargetBanner targets={led.targets} />
       <LedgerHeader name={led.dealer} outstanding={led.outstanding} ageing={led.ageing} creditLimit={led.credit_limit} lastPayment={led.last_payment} />
       <div className="flex flex-wrap gap-2 mb-3">
         <button onClick={() => setModal('bill')} className="flex-1 min-w-[30%] bg-gradient-to-b from-brand-500 to-brand-700 hover:from-brand-400 hover:to-brand-600 text-white text-[13px] font-semibold py-2.5 rounded-xl shadow-glow transition-all">Add bill</button>

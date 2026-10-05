@@ -1,5 +1,45 @@
 import { inr } from '../lib/format.js'
-import { Trash2, Eye } from 'lucide-react'
+import { Trash2, Eye, Target } from 'lucide-react'
+
+// Festival/period target banner — shown at the top of a dealer's ledger when a target is set.
+export function TargetBanner({ targets = [] }) {
+  if (!targets || !targets.length) return null
+  return (
+    <div className="space-y-2.5 mb-3" data-testid="ledger-target-banner">
+      {targets.map((t) => {
+        const pct = Math.max(0, Math.min(100, t.achieved_pct || 0))
+        const barTone = t.done ? 'bg-emerald-500' : t.behind ? 'bg-red-500' : 'bg-amber-500'
+        const chip = t.done ? ['Achieved', 'bg-emerald-100 text-emerald-700']
+          : !t.started ? ['Upcoming', 'bg-sky-100 text-sky-700']
+            : t.behind ? ['Behind', 'bg-red-100 text-red-700']
+              : ['On track', 'bg-amber-100 text-amber-800']
+        return (
+          <div key={t.id} data-testid={'ledger-target-' + t.id}
+            className="rounded-2xl p-3.5 shadow-soft border border-amber-200/70 bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 dark:from-amber-500/10 dark:via-orange-500/10 dark:to-rose-500/10 dark:border-amber-500/20">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-7 h-7 rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0"><Target size={15} /></span>
+                <div className="min-w-0">
+                  <div className="font-display text-[14px] font-bold text-slate-900 dark:text-slate-100 truncate">{t.name}</div>
+                  <div className="text-[10.5px] text-slate-500 dark:text-slate-400">Target <b className="text-slate-700 dark:text-slate-200">{inr(t.target_value)}</b> basic{t.gst_pct ? ' · excl. ' + t.gst_pct + '% GST' : ''}</div>
+                </div>
+              </div>
+              <span className={'text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full shrink-0 ' + chip[1]}>{chip[0]}</span>
+            </div>
+            <div className="h-2 rounded-full bg-white/70 dark:bg-slate-800 overflow-hidden mt-2.5">
+              <div className={'h-full rounded-full transition-all ' + barTone} style={{ width: pct + '%' }} />
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1.5 text-[11px] text-slate-600 dark:text-slate-300">
+              <span><b className="text-slate-900 dark:text-slate-100">{inr(t.basic_achieved)}</b> done ({t.achieved_pct}%)</span>
+              {!t.done && <span>· <b className="text-slate-900 dark:text-slate-100">{inr(t.remaining)}</b> to go</span>}
+              {!t.expired && <span>· {t.days_left}d left</span>}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 const BUCKETS = { age_0_30: '0–30', age_31_60: '31–60', age_61_90: '61–90', age_90p: '90+' }
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
