@@ -21,7 +21,7 @@ export function TargetBanner({ targets = [] }) {
                 <span className="w-7 h-7 rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0"><Target size={15} /></span>
                 <div className="min-w-0">
                   <div className="font-display text-[14px] font-bold text-slate-900 dark:text-slate-100 truncate">{t.name}</div>
-                  <div className="text-[10.5px] text-slate-500 dark:text-slate-400">Target <b className="text-slate-700 dark:text-slate-200">{inr(t.target_value)}</b> basic{t.gst_pct ? ' · excl. ' + t.gst_pct + '% GST' : ''}</div>
+                  <div className="text-[10.5px] text-slate-500 dark:text-slate-400">Target <b className="text-slate-700 dark:text-slate-200">{inr(t.target_value)}</b> basic{t.gst_pct ? ' · excl. ' + t.gst_pct + '% GST' : ''}{t.brand ? ' · ' + t.brand + ' only' : ''}</div>
                 </div>
               </div>
               <span className={'text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full shrink-0 ' + chip[1]}>{chip[0]}</span>
@@ -33,6 +33,7 @@ export function TargetBanner({ targets = [] }) {
               <span><b className="text-slate-900 dark:text-slate-100">{inr(t.basic_achieved)}</b> done ({t.achieved_pct}%)</span>
               {!t.done && <span>· <b className="text-slate-900 dark:text-slate-100">{inr(t.remaining)}</b> to go</span>}
               {!t.expired && <span>· {t.days_left}d left</span>}
+              {t.reward_type && <span className="font-semibold text-emerald-700 dark:text-emerald-400">· {t.done ? 'Reward earned ' + inr(t.reward_target) : (t.reward_type === 'flat' ? inr(t.reward_target) + ' reward on target' : t.reward_value + '% reward')}</span>}
             </div>
           </div>
         )

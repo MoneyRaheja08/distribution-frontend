@@ -38,6 +38,7 @@ function TargetBar({ r }) {
         <span><b className="text-slate-900">{inr(r.basic_achieved)}</b> / {inr(r.target_value)} ({r.achieved_pct}%)</span>
         {!r.done && <span>· <b className="text-slate-900">{inr(r.remaining)}</b> to go</span>}
         {!r.expired && <span>· {r.days_left}d left</span>}
+        {r.reward_type && <span className="font-semibold text-emerald-700">· {r.done ? 'reward ' + inr(r.reward_target) + ' earned' : (r.reward_type === 'flat' ? inr(r.reward_target) + ' reward' : r.reward_value + '% reward')}</span>}
         <span className="text-slate-400">· {r.date_from} → {r.date_to}</span>
       </div>
     </>
@@ -95,7 +96,7 @@ export function TargetBoard() {
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <div className="font-display text-[15px] font-bold text-slate-900 truncate">{r.dealer_name}</div>
-                <div className="text-[11px] text-slate-500 flex items-center gap-1"><Flame size={11} className="text-amber-500" />{r.name}</div>
+                <div className="text-[11px] text-slate-500 flex items-center gap-1"><Flame size={11} className="text-amber-500" />{r.name}{r.brand && <span className="ml-0.5 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[9px] uppercase tracking-wide">{r.brand}</span>}</div>
               </div>
               <span className={'text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full shrink-0 ' + s2[1]}>{s2[0]}</span>
             </div>
@@ -108,16 +109,17 @@ export function TargetBoard() {
         )
       })}
 
-      {form && <TargetForm row={form.id ? form : null} dealers={dealers} onClose={() => setForm(null)} onSaved={() => { setForm(null); load() }} />}
+      {form && <TargetForm row={form.id ? form : null} dealers={dealers} brands={data.brands || []} onClose={() => setForm(null)} onSaved={() => { setForm(null); load() }} />}
     </>
   )
 }
 
-function TargetForm({ row, dealers, onClose, onSaved }) {
+function TargetForm({ row, dealers, brands = [], onClose, onSaved }) {
   const [f, setF] = useState({
-    dealer_id: row?.dealer_id || '', name: row?.name || '',
+    dealer_id: row?.dealer_id || '', name: row?.name || '', brand: row?.brand || '',
     target_value: row?.target_value || '', gst_pct: row?.gst_pct ?? 18,
     date_from: row?.date_from || today(), date_to: row?.date_to || today(), note: row?.note || '',
+    reward_type: row?.reward_type || '', reward_value: row?.reward_value || '',
   })
   const [busy, setBusy] = useState(false)
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
@@ -128,7 +130,7 @@ function TargetForm({ row, dealers, onClose, onSaved }) {
     if (f.date_from > f.date_to) return toast.error('End date must be after start')
     setBusy(true)
     try {
-      const body = { name: f.name.trim(), target_value: +f.target_value, gst_pct: +f.gst_pct || 0, date_from: f.date_from, date_to: f.date_to, note: f.note.trim() }
+      const body = { name: f.name.trim(), target_value: +f.target_value, gst_pct: +f.gst_pct || 0, date_from: f.date_from, date_to: f.date_to, note: f.note.trim(), brand: (f.brand || '').trim(), reward_type: f.reward_type || '', reward_value: +f.reward_value || 0 }
       if (row) await api.targetUpdate(row.id, body)
       else await api.targetCreate({ ...body, dealer_id: f.dealer_id })
       toast.success(row ? 'Target updated' : 'Target set')
@@ -141,8 +143,13 @@ function TargetForm({ row, dealers, onClose, onSaved }) {
         options={[['', 'Select dealer…'], ...dealers.map((d) => [d.id, d.name])]} />}
       {row && <div className="mb-3 text-[13px] font-semibold text-slate-700">{row.dealer_name}</div>}
       <Field label="Target name" value={f.name} onChange={(v) => set('name', v)} placeholder="Diwali 2026" />
+      <Select label="Brand" value={f.brand} onChange={(v) => set('brand', v)} testid="target-brand"
+        options={[['', 'All brands (whole ledger value)'], ...brands.map((b) => [b, b])]} />
       <Field label="Target value (basic, before GST) ₹" value={f.target_value} onChange={(v) => set('target_value', v)} type="number" big />
-      <Field label="GST % to strip from billing" value={f.gst_pct} onChange={(v) => set('gst_pct', v)} type="number" placeholder="18" />
+      <Field label="GST % to strip (use 0 if brand sales are already ex-GST)" value={f.gst_pct} onChange={(v) => set('gst_pct', v)} type="number" placeholder="18" />
+      <Select label="Dealer reward on hitting target" value={f.reward_type} onChange={(v) => set('reward_type', v)} testid="target-reward-type"
+        options={[['', 'No reward'], ['flat', 'Flat ₹ bonus'], ['pct', '% of sales']]} />
+      {f.reward_type && <Field label={f.reward_type === 'flat' ? 'Reward amount ₹' : 'Reward %'} value={f.reward_value} onChange={(v) => set('reward_value', v)} type="number" />}
       <div className="grid grid-cols-2 gap-3">
         <Field label="From" value={f.date_from} onChange={(v) => set('date_from', v)} type="date" />
         <Field label="To" value={f.date_to} onChange={(v) => set('date_to', v)} type="date" />

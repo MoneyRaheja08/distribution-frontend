@@ -32,7 +32,8 @@ export default function AdminDashboard() {
   const nav = useNavigate()
   const [d, setD] = useState(null)
   const [err, setErr] = useState('')
-  useEffect(() => { api.dashboard().then(setD).catch((e) => setErr(e.message)) }, [])
+  const [tg, setTg] = useState(null)
+  useEffect(() => { api.dashboard().then(setD).catch((e) => setErr(e.message)); api.targetsList().then(setTg).catch(() => {}) }, [])
   if (err) return <div className="text-red-600 text-sm">{err}</div>
   if (!d) return <Spin />
   const t = d.today, m = d.mtd
@@ -68,6 +69,16 @@ export default function AdminDashboard() {
           {d.pending_approvals > 0 && <button data-testid="dash-approvals" onClick={() => nav('/approvals')} className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex justify-between items-center text-left"><div><div className="text-[14px] font-bold text-amber-800">{d.pending_approvals} payment(s) awaiting approval</div><div className="text-[11px] text-amber-700">Tap to review</div></div><ClipboardCheck className="text-amber-700" size={18} /></button>}
           {d.cheques.due > 0 && <button data-testid="dash-cheques-due" onClick={() => nav('/money')} className="bg-sky-50 border border-sky-200 rounded-2xl px-4 py-3 flex justify-between items-center text-left"><div><div className="text-[14px] font-bold text-sky-800">{inr(d.cheques.due)} in cheques ready to clear</div><div className="text-[11px] text-sky-700">{inr(d.cheques.future)} post-dated, not yet due</div></div><FileClock className="text-sky-700" size={18} /></button>}
         </div>
+      )}
+
+      {tg && tg.summary && tg.summary.active > 0 && (
+        <button data-testid="dash-targets" onClick={() => nav('/reports?tab=targets')} className="w-full text-left mb-4 bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 border border-amber-200 rounded-2xl px-4 py-3 flex justify-between items-center">
+          <div>
+            <div className="text-[14px] font-bold text-amber-900 flex items-center gap-2"><Target size={16} /> {tg.summary.active} festival target(s) running</div>
+            <div className="text-[11px] text-amber-700 mt-0.5">{tg.summary.on_track} on track · {tg.summary.behind} behind · {tg.summary.done} done · {inr(tg.summary.achieved_total)} of {inr(tg.summary.target_total)} basic</div>
+          </div>
+          <ArrowRight className="text-amber-700" size={18} />
+        </button>
       )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4 stagger">
