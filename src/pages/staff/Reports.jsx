@@ -13,16 +13,17 @@ import { Spin, BackBtn, Card, SkeletonList } from '../../components/ui.jsx'
 import { Big, ExportBtn, Section, Row2, Metric, FilterBar, Search, Pick, SelPick } from '../../components/reportBits.jsx'
 import { DealerScorecard, CreditTrend, InactiveDealers, MonthOnMonth, CategoryMix, PriceRealisation, CashFlow, CollectorEfficiency, SchemeTracker, Digest, DailySales, PurchasesReport, StockPlanner } from './Reports2.jsx'
 import { TargetBoard, TargetPush } from './Targets.jsx'
+import { NoCostFixer, CostOverridesManager } from './CostOverrides.jsx'
 
 const monthStart = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01` }
 const today = () => new Date().toISOString().slice(0, 10)
 const GROUPS = [
   ['Collect', [['followup', 'Follow-up'], ['beat', 'Beat sheet'], ['collections', 'Collections'], ['targets', 'Dealer targets'], ['tpush', 'Target push list'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['cashflow', 'Cash forecast'], ['colleff', 'Collector efficiency']]],
   ['Sales', [['planner', 'Stock planner'], ['daily', 'Daily sales'], ['sales', 'Dealer × Model'], ['purchasesr', 'Purchases'], ['mom', 'Month vs month'], ['catmix', 'Category mix'], ['price', 'Price realisation'], ['inactive', 'Lost dealers'], ['billspdf', 'PDF bills'], ['purchases', 'Brand buys']]],
-  ['Profit', [['profit', 'Profit'], ['profit2', 'Profit 2 · Real'], ['pbd', 'Profit by dealer'], ['scheme', 'Scheme tracker'], ['dscore', 'Dealer scorecard'], ['trend', 'Credit trend'], ['scorecard', 'Brand scorecard'], ['top', 'Top performers'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']]],
+  ['Profit', [['profit', 'Profit'], ['profit2', 'Profit 2 · Real'], ['pbd', 'Profit by dealer'], ['costs', 'Cost overrides'], ['scheme', 'Scheme tracker'], ['dscore', 'Dealer scorecard'], ['trend', 'Credit trend'], ['scorecard', 'Brand scorecard'], ['top', 'Top performers'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']]],
   ['Daily', [['digest', 'WhatsApp digest']]],
 ]
-const NO_DATES = new Set(['ageing', 'billage', 'cashflow', 'inactive', 'trend', 'mom', 'scheme', 'digest', 'followup', 'daily', 'planner', 'targets', 'tpush'])
+const NO_DATES = new Set(['ageing', 'billage', 'cashflow', 'inactive', 'trend', 'mom', 'scheme', 'digest', 'followup', 'daily', 'planner', 'targets', 'tpush', 'costs'])
 
 
 
@@ -80,6 +81,7 @@ export default function Reports() {
       {tab === 'purchases' && <PurchaseBrandReport from={from} to={to} />}
       {tab === 'profit' && <ProfitReport from={from} to={to} />}
       {tab === 'profit2' && <Profit2 from={from} to={to} />}
+      {tab === 'costs' && <CostOverridesManager />}
       {tab === 'pbd' && <ProfitByDealer from={from} to={to} />}
       {tab === 'scorecard' && <BrandScorecard from={from} to={to} />}
       {tab === 'top' && <TopPerformers from={from} to={to} />}
@@ -595,6 +597,8 @@ function Profit2({ from, to }) {
   const [r, setR] = useState(null)
   const [brand, setBrand] = useState('HAIER')
   const [brands, setBrands] = useState([])
+  const [showNoCost, setShowNoCost] = useState(false)
+  const [nonce, setNonce] = useState(0)
   const [scheme, setScheme] = useState(1.5)
   const [opex, setOpex] = useState(2)
   const [coc, setCoc] = useState(12)
@@ -605,7 +609,7 @@ function Profit2({ from, to }) {
       setR(x)
       if (x.brands) { setBrands(x.brands); if (brand && !x.brands.includes(brand)) setBrand('') }
     })
-  }, [from, to, brand])
+  }, [from, to, brand, nonce])
   if (!r) return <SkeletonList rows={5} />
 
   const days = r.period_days || 30
@@ -659,7 +663,7 @@ function Profit2({ from, to }) {
           q.no_date > 0 && ['Sale lines with unreadable date (never counted in any range)', q.no_date + ' lines · ' + inr(q.no_date_amount), 'red'],
           q.no_brand > 0 && ['Sale lines with blank brand (excluded when a brand is picked)', q.no_brand + ' lines · ' + inr(q.no_brand_amount), 'red'],
           q.other_brand > 0 && ['Other-brand sales in this range (not ' + label + ')', q.other_brand + ' lines · ' + inr(q.other_brand_amount), 'slate'],
-          q.no_cost_units > 0 && ['Units sold with no purchase cost found (margin overstated)', q.no_cost_units + ' units · ' + inr(q.no_cost_amount), 'red'],
+          q.no_cost_units > 0 && ['Units sold with no purchase cost found (margin overstated)', q.no_cost_units + ' units · ' + inr(q.no_cost_amount), 'red', 'nocost'],
           q.unmatched_dealer > 0 && ['Sale lines not linked to a dealer (bill not in ledger)', q.unmatched_dealer + ' lines · ' + inr(q.unmatched_dealer_amount), 'amber'],
           q.stock_units_no_cost > 0 && ['In-stock units with no purchase rate (stock value understated)', q.stock_units_no_cost + ' units', 'amber'],
         ].filter(Boolean)
@@ -668,10 +672,20 @@ function Profit2({ from, to }) {
         return (
           <div data-testid="p2-data-check" className="rounded-xl bg-white border border-amber-200 text-[12px] mb-3 overflow-hidden">
             <div className="px-3 py-2 bg-amber-50 font-bold text-amber-900 text-[11px] uppercase tracking-wide">Data check · what is not in these numbers</div>
-            {items.map(([a, b, t], i) => <div key={i} className="flex justify-between gap-3 px-3 py-1.5 border-t border-slate-50"><span className={C[t]}>{a}</span><span className={'font-bold shrink-0 ' + C[t]}>{b}</span></div>)}
+            {items.map((it, i) => {
+              const [a, b, t, action] = it
+              if (action === 'nocost') return (
+                <button key={i} data-testid="p2-fix-nocost" onClick={() => setShowNoCost(true)} className="w-full flex justify-between gap-3 px-3 py-1.5 border-t border-slate-50 text-left hover:bg-amber-50 transition-colors">
+                  <span className={C[t]}>{a} <span className="underline font-semibold">— set cost</span></span>
+                  <span className={'font-bold shrink-0 ' + C[t]}>{b}</span>
+                </button>
+              )
+              return <div key={i} className="flex justify-between gap-3 px-3 py-1.5 border-t border-slate-50"><span className={C[t]}>{a}</span><span className={'font-bold shrink-0 ' + C[t]}>{b}</span></div>
+            })}
           </div>
         )
       })()}
+      {showNoCost && <NoCostFixer from={from} to={to} brand={brand} onClose={() => setShowNoCost(false)} onSaved={() => { setShowNoCost(false); setNonce((n) => n + 1) }} />}
       <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-5 mb-4 flex flex-wrap items-end gap-6">
         <div className="flex-1 min-w-[160px]">
           <div data-testid="p2-roce" className={'text-5xl font-extrabold tracking-tight ' + (netM < 0 ? 'text-red-600' : 'text-emerald-700')}>{wc > 0 ? Math.round(roce) + '%' : '—'}</div>
