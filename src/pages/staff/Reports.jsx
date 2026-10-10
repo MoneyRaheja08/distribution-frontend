@@ -418,8 +418,8 @@ function SalesReport({ from, to }) {
   if (!r) return <SkeletonList rows={5} />
   const tag = [f.brand, f.dealer, f.model].filter(Boolean).join(' · ')
   const exportLines = () => exportSheet('sales-' + (tag || 'all').replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '.xlsx',
-    [['Date', 'Bill', 'Dealer', 'Brand', 'Model', 'IMEI', 'Qty', 'Rate', 'Amount'], ...r.rows.map((x) => [x.date, x.bill_no, x.dealer, x.brand, x.model, x.imei, x.qty, x.rate, x.amount]), ['Total', '', '', '', '', '', r.units, '', r.total]],
-    { money: [7, 8], boldRows: [r.rows.length + 1], sheet: 'Sales' })
+    [['Date', 'Bill', 'Dealer', 'Brand', 'Category', 'Model', 'IMEI', 'Qty', 'Rate', 'Amount'], ...r.rows.map((x) => [x.date, x.bill_no, x.dealer, x.brand, x.group || '—', x.model, x.imei, x.qty, x.rate, x.amount]), ['Total', '', '', '', '', '', '', r.units, '', r.total]],
+    { money: [8, 9], boldRows: [r.rows.length + 1], sheet: 'Sales' })
   return (
     <>
       <Big label={`Sales · ${tag || 'All'} · ${from} to ${to} · ${r.count} line(s) · ${r.units} IMEI${r.duplicates_ignored ? ` · ${r.duplicates_ignored} re-imported duplicates ignored` : ''}`} value={inr(r.total)} />
@@ -434,11 +434,11 @@ function SalesReport({ from, to }) {
         <Search value={q} onChange={setQ} placeholder="Dealer, model or IMEI…" />
         <button onClick={run} className="text-[12px] font-semibold text-brand-700 bg-brand-50 rounded-full px-3 py-1.5">Search</button>
       </FilterBar>
-      <Section title="Models sold" action={<ExportBtn onClick={() => exportSheet('sales-by-model.xlsx', [['Model', 'Brand', 'Qty', 'Amount'], ...r.by_model.map((m) => [m.model, m.brand, m.qty, m.amount])], { money: [3], sheet: 'By model' })} />}>
+      <Section title="Models sold" action={<ExportBtn onClick={() => exportSheet('sales-by-model.xlsx', [['Category', 'Model', 'Brand', 'Qty', 'Amount'], ...r.by_model.map((m) => [m.group || '—', m.model, m.brand, m.qty, m.amount])], { money: [4], sheet: 'By model' })} />}>
         {(!r.by_model || r.by_model.length === 0) ? <Row2 a="No sales in range" b="" /> : r.by_model.map((m, i) => (
           <div key={i} className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-slate-50 last:border-0 text-[13px]">
             <span className="w-5 text-center font-display font-bold text-slate-300">{i + 1}</span>
-            <div className="flex-1 min-w-0"><div className="font-semibold text-slate-800 truncate">{m.model}</div><div className="text-[10px] text-slate-400">{m.brand} · {m.qty} sold</div></div>
+            <div className="flex-1 min-w-0"><div className="font-semibold text-slate-800 truncate">{m.model}</div><div className="text-[10px] text-slate-400">{m.group ? m.group + ' · ' : ''}{m.brand} · {m.qty} sold</div></div>
             <span className="font-bold text-slate-900 shrink-0">{inr(m.amount)}</span>
           </div>
         ))}
