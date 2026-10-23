@@ -41,22 +41,6 @@ export default function DcReports() {
             {admin ? <Stat label="Profit" v={inr(r.totals.profit || 0)} tone="text-emerald-600" sub={r.totals.total ? Math.round((r.totals.profit / r.totals.total) * 100) + '% margin' : ''} /> : <Stat label="Net cash" v={inr((r.by_pay.cash || 0) - (r.totals.expenses || 0))} />}
           </div>
 
-          <Section title="Sales vs collection" right={<span className="text-[12px] font-semibold text-slate-500">{inr((r.totals.total || 0) - (r.totals.pending || 0))} collected / {inr(r.totals.total || 0)} billed</span>}>
-            <ListCard empty="No bills in this range." testid="dc-rep-svc">
-              {r.by_day.map((d, i) => {
-                const coll = d.collected != null ? d.collected : (d.total - (d.pending || 0))
-                const pct = d.total ? Math.round((coll / d.total) * 100) : 0
-                return (
-                  <Row key={i} testid="dc-rep-svc-row" title={niceDate(d.date)} sub={d.bills + ' bills · ' + pct + '% collected'} tone={d.pending > 0 ? 'bg-amber-500' : 'bg-emerald-500'}
-                    right={<div>
-                      <div className="text-[13.5px] font-bold text-slate-900">{inr(coll)} <span className="text-slate-400 font-normal">/ {inr(d.total)}</span></div>
-                      {d.pending > 0 && <div className="text-[11.5px] text-amber-600 font-semibold">{inr(d.pending)} pending</div>}
-                    </div>} />
-                )
-              })}
-            </ListCard>
-          </Section>
-
           <Section title="Day-wise">
             <Bars rows={r.by_day} label={(d) => niceDate(d.date)} sub={(d) => d.bills + ' bills'} admin={admin} testid="dc-rep-days" empty="No bills in this range." />
           </Section>

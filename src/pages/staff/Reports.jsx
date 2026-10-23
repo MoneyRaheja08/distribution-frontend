@@ -18,7 +18,7 @@ import { NoCostFixer, CostOverridesManager } from './CostOverrides.jsx'
 const monthStart = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01` }
 const today = () => new Date().toISOString().slice(0, 10)
 const GROUPS = [
-  ['Collect', [['followup', 'Follow-up'], ['beat', 'Beat sheet'], ['collections', 'Collections'], ['targets', 'Dealer targets'], ['tpush', 'Target push list'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['cashflow', 'Cash forecast'], ['colleff', 'Collector efficiency']]],
+  ['Collect', [['followup', 'Follow-up'], ['beat', 'Beat sheet'], ['collections', 'Collections'], ['cvs', 'Collection vs sales'], ['targets', 'Dealer targets'], ['tpush', 'Target push list'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['cashflow', 'Cash forecast'], ['colleff', 'Collector efficiency']]],
   ['Sales', [['planner', 'Stock planner'], ['daily', 'Daily sales'], ['sales', 'Dealer × Model'], ['purchasesr', 'Purchases'], ['mom', 'Month vs month'], ['catmix', 'Category mix'], ['price', 'Price realisation'], ['inactive', 'Lost dealers'], ['billspdf', 'PDF bills'], ['purchases', 'Brand buys']]],
   ['Profit', [['profit', 'Profit'], ['profit2', 'Profit 2 · Real'], ['pbd', 'Profit by dealer'], ['costs', 'Cost overrides'], ['scheme', 'Scheme tracker'], ['dscore', 'Dealer scorecard'], ['trend', 'Credit trend'], ['scorecard', 'Brand scorecard'], ['top', 'Top performers'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']]],
   ['Daily', [['digest', 'WhatsApp digest']]],
@@ -86,6 +86,7 @@ export default function Reports() {
       {tab === 'scorecard' && <BrandScorecard from={from} to={to} />}
       {tab === 'top' && <TopPerformers from={from} to={to} />}
       {tab === 'svc' && <SalesVsColl from={from} to={to} />}
+      {tab === 'cvs' && <CollectionVsSales from={from} to={to} />}
       {tab === 'dscore' && <DealerScorecard from={from} to={to} />}
       {tab === 'trend' && <CreditTrend />}
       {tab === 'inactive' && <InactiveDealers />}
@@ -204,6 +205,60 @@ function SalesVsColl({ from, to }) {
             <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{x.name}</span>
               <span className={'font-bold shrink-0 ' + (x.net > 0 ? 'text-red-600' : 'text-emerald-700')}>{x.net > 0 ? '+' : ''}{inr(x.net)}</span></div>
             <div className="text-[11px] text-slate-500 mt-0.5">Billed {inr(x.sales)} · Collected {inr(x.collected)}</div>
+          </div>
+        ))}
+      </Section>
+    </>
+  )
+}
+
+function CvsBar({ label, val, max, color }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-16 text-[10.5px] text-slate-400 shrink-0">{label}</span>
+      <div className="flex-1 h-3 rounded bg-slate-100 overflow-hidden"><div className={'h-full rounded ' + color} style={{ width: (max ? (val / max) * 100 : 0) + '%' }} /></div>
+      <span className="w-24 text-right text-[12px] font-semibold text-slate-700 shrink-0">{inr(val)}</span>
+    </div>
+  )
+}
+
+function CollectionVsSales({ from, to }) {
+  const [group, setGroup] = useState('day')
+  const [r, setR] = useState(null)
+  useEffect(() => { setR(null); api.reportCvs(from, to, group).then(setR) }, [from, to, group])
+  if (!r) return <SkeletonList rows={5} />
+  const max = Math.max(1, ...r.rows.map((x) => Math.max(x.sales, x.collected)))
+  const dl = () => exportSheet('collection-vs-sales.xlsx',
+    [['Period', 'Billed (sales)', 'Collected', 'Gap (sales-coll)', 'Uncollected running', 'Collected %'],
+      ...r.rows.map((x) => [x.period, x.sales, x.collected, x.gap, x.cum_gap, x.pct]),
+      ['Total', r.total_sales, r.total_collected, r.gap, '', r.pct]],
+    { money: [1, 2, 3, 4], boldRows: [r.rows.length + 1], sheet: 'Collection vs sales' })
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-2.5 mb-3">
+        <Card n={inr(r.total_sales)} l="Total billed (sales)" />
+        <Card n={inr(r.total_collected)} l="Total collected" />
+        <Card n={r.pct + '%'} l="Collected of billed" tone={r.pct >= 100 ? 'text-emerald-700' : r.pct >= 80 ? '' : 'text-amber-600'} />
+      </div>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="inline-flex bg-slate-100 rounded-lg p-0.5">
+          {[['day', 'Daily'], ['month', 'Monthly']].map(([k, l]) => (
+            <button key={k} onClick={() => setGroup(k)} className={'text-[12px] font-semibold px-3 py-1.5 rounded-md transition-colors ' + (group === k ? 'bg-white shadow text-slate-900' : 'text-slate-500')}>{l}</button>
+          ))}
+        </div>
+        <div className="ml-auto"><ExportBtn onClick={dl} /></div>
+      </div>
+      <Section title={(group === 'month' ? 'By month · ' : 'By day · ') + from + ' to ' + to}>
+        {r.rows.length === 0 ? <Row2 a="No sales or collections in range" b="" /> : r.rows.map((x) => (
+          <div key={x.period} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
+            <div className="flex justify-between items-baseline text-[13px]">
+              <span className="font-semibold text-slate-800">{x.period}</span>
+              <span className="text-[11px] text-slate-500">{x.pct == null ? '' : x.pct + '% collected'}{x.cum_gap > 0 ? ' · uncollected so far ' + inr(x.cum_gap) : ''}</span>
+            </div>
+            <div className="mt-1.5 space-y-1">
+              <CvsBar label="Billed" val={x.sales} max={max} color="bg-slate-400" />
+              <CvsBar label="Collected" val={x.collected} max={max} color="bg-emerald-500" />
+            </div>
           </div>
         ))}
       </Section>

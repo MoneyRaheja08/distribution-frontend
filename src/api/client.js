@@ -106,6 +106,7 @@ export const api = {
   reportAgeing: () => USE_MOCK ? mock.reportAgeing() : http('/reports/ageing'),
   reportActivity: (from, to) => USE_MOCK ? mock.reportActivity() : http('/reports/activity?from=' + from + '&to=' + to),
   reportSalesVsColl: (from, to) => USE_MOCK ? mock.reportSalesVsColl() : http('/reports/sales-vs-collection?from=' + from + '&to=' + to),
+  reportCvs: (from, to, group = 'day') => USE_MOCK ? mock.empty({ rows: [], total_sales: 0, total_collected: 0, gap: 0, pct: 0 }) : http('/reports/collection-vs-sales?from=' + from + '&to=' + to + '&group=' + group),
   reportBillAgeing: () => USE_MOCK ? mock.reportBillAgeing() : http('/reports/bill-ageing'),
   reportBills: (from, to, source) => USE_MOCK ? mock.reportBills(from, to, source) : http('/reports/bills?from=' + from + '&to=' + to + (source ? '&source=' + source : '')),
   reportSales: (from, to, q = '', f = {}) => USE_MOCK ? mock.reportSales(from, to, q) : http('/reports/sales?from=' + from + '&to=' + to + (q ? '&q=' + encodeURIComponent(q) : '') + (f.brand ? '&brand=' + encodeURIComponent(f.brand) : '') + (f.dealer ? '&dealer=' + encodeURIComponent(f.dealer) : '') + (f.model ? '&model=' + encodeURIComponent(f.model) : '')),
