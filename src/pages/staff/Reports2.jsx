@@ -559,33 +559,47 @@ export function Digest() {
 
 // 14. Daily sales (single day, filterable)
 export function DailySales({ initial }) {
-  const [day, setDay] = useState(initial || new Date().toISOString().slice(0, 10))
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const [day, setDay] = useState(initial || todayStr)
+  const [day2, setDay2] = useState(initial || todayStr)
   const [r, setR] = useState(null)
   const [f, setF] = useState({ brand: '', dealer: '', model: '' })
   const [opts, setOpts] = useState({ dealers: [], models: [], brands: [] })
-  const load = (d, ff) => { setR(null); api.reportSales(d, d, '', ff).then((x) => { setR(x); setOpts({ dealers: x.dealers || [], models: x.models || [], brands: x.brands || [] }) }) }
-  useEffect(() => { load(day, f) }, [day]) // eslint-disable-line
-  const setFilter = (k, v) => { const nf = { ...f, [k]: v }; setF(nf); load(day, nf) }
-  const shift = (n) => { const d = new Date(day); d.setDate(d.getDate() + n); setDay(d.toISOString().slice(0, 10)) }
+  // keep from <= to for the query regardless of which box the user set
+  const qFrom = day <= day2 ? day : day2
+  const qTo = day <= day2 ? day2 : day
+  const load = (from, to, ff) => { setR(null); api.reportSales(from, to, '', ff).then((x) => { setR(x); setOpts({ dealers: x.dealers || [], models: x.models || [], brands: x.brands || [] }) }) }
+  useEffect(() => { load(qFrom, qTo, f) }, [day, day2]) // eslint-disable-line
+  const setFilter = (k, v) => { const nf = { ...f, [k]: v }; setF(nf); load(qFrom, qTo, nf) }
+  // arrows shift the whole window (both dates) by n days
+  const shift = (n) => {
+    const a = new Date(day); a.setDate(a.getDate() + n)
+    const b = new Date(day2); b.setDate(b.getDate() + n)
+    setDay(a.toISOString().slice(0, 10)); setDay2(b.toISOString().slice(0, 10))
+  }
   if (!r) return <SkeletonList rows={5} />
   const byBill = {}
-  r.rows.forEach((x) => { const b = byBill[x.bill_no] = byBill[x.bill_no] || { bill_no: x.bill_no, dealer: x.dealer, amount: 0, lines: [] }; b.amount += x.amount; b.lines.push(x) })
+  r.rows.forEach((x) => { const b = byBill[x.bill_no] = byBill[x.bill_no] || { bill_no: x.bill_no, dealer: x.dealer, date: x.date, amount: 0, lines: [] }; b.amount += x.amount; b.lines.push(x) })
   const bills = Object.values(byBill).sort((a, b) => b.amount - a.amount)
-  const dl = () => exportSheet('sales-' + day + '.xlsx',
+  const isRange = qFrom !== qTo
+  const rangeTag = isRange ? qFrom + '_to_' + qTo : qFrom
+  const dl = () => exportSheet('sales-' + rangeTag + '.xlsx',
     [['Date', 'Bill', 'Dealer', 'Brand', 'Model', 'IMEI', 'Qty', 'Rate', 'Amount'], ...r.rows.map((x) => [x.date, x.bill_no, x.dealer, x.brand, x.model, x.imei, x.qty, x.rate, x.amount]), ['Total', '', '', '', '', '', r.units, '', r.total]],
-    { money: [7, 8], boldRows: [r.rows.length + 1], sheet: 'Sales ' + day })
-  const isToday = day === new Date().toISOString().slice(0, 10)
+    { money: [7, 8], boldRows: [r.rows.length + 1], sheet: 'Sales' })
+  const isToday = !isRange && qTo === todayStr
   return (
     <>
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <button data-testid="daily-prev" onClick={() => shift(-1)} className="text-[13px] font-bold text-slate-600 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">‹</button>
-        <input data-testid="daily-day" type="date" value={day} onChange={(e) => setDay(e.target.value)} className="border border-slate-200 rounded-lg px-2 py-1.5 text-[13px]" />
+        <input data-testid="daily-day" type="date" value={day} max={day2} onChange={(e) => setDay(e.target.value)} className="border border-slate-200 rounded-lg px-2 py-1.5 text-[13px]" />
+        <span className="text-[12px] text-slate-400">to</span>
+        <input data-testid="daily-day2" type="date" value={day2} min={day} onChange={(e) => setDay2(e.target.value)} className="border border-slate-200 rounded-lg px-2 py-1.5 text-[13px]" />
         <button data-testid="daily-next" onClick={() => shift(1)} disabled={isToday} className="text-[13px] font-bold text-slate-600 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 disabled:opacity-40">›</button>
-        {!isToday && <button onClick={() => setDay(new Date().toISOString().slice(0, 10))} className="text-[12px] font-semibold text-emerald-700">Today</button>}
+        {(isRange || qTo !== todayStr) && <button onClick={() => { setDay(todayStr); setDay2(todayStr) }} className="text-[12px] font-semibold text-emerald-700">Today</button>}
         <div className="ml-auto"><ExportBtn onClick={dl} /></div>
       </div>
       <div className="grid grid-cols-3 gap-3 mb-3">
-        <Metric label={isToday ? 'Sales today' : 'Sales on ' + day} value={inr(r.total)} sub={bills.length + ' bills'} tone="text-emerald-700" />
+        <Metric label={isToday ? 'Sales today' : isRange ? 'Sales ' + qFrom + ' → ' + qTo : 'Sales on ' + qFrom} value={inr(r.total)} sub={bills.length + ' bills'} tone="text-emerald-700" />
         <Metric label="Units" value={r.units || r.rows.reduce((s, x) => s + (x.qty || 0), 0)} sub={r.count + ' lines'} />
         <Metric label="Dealers" value={r.by_dealer.length} sub="billed" />
       </div>
@@ -604,7 +618,7 @@ export function DailySales({ initial }) {
       <Section title={'Bills · ' + bills.length}>
         {bills.length === 0 ? <Row2 a="—" b="" /> : bills.map((b) => (
           <div key={b.bill_no} data-testid="daily-bill" className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
-            <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{b.dealer} <span className="text-slate-400 font-normal">· {b.bill_no}</span></span><span className="font-bold shrink-0">{inr(b.amount)}</span></div>
+            <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{b.dealer} <span className="text-slate-400 font-normal">· {b.bill_no}{isRange ? ' · ' + b.date : ''}</span></span><span className="font-bold shrink-0">{inr(b.amount)}</span></div>
             {b.lines.map((l, i) => <div key={i} className="text-[11px] text-slate-500 mt-0.5 flex justify-between"><span className="truncate pr-2">{l.model}{l.imei ? ` · ${l.imei}` : ''}{l.qty > 1 ? ` × ${l.qty}` : ''}</span><span>{inr(l.amount)}</span></div>)}
           </div>
         ))}
