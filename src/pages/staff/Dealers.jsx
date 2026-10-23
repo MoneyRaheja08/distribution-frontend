@@ -214,7 +214,7 @@ function CollectModal({ dealer, outstanding, onClose, onDone }) {
   const [busy, setBusy] = useState(false)
   const [collectors, setCollectors] = useState([])
   const [collectedBy, setCollectedBy] = useState('')
-  useEffect(() => { if (staff) api.selectableUsers().then((us) => setCollectors((us || []).filter((u) => u.role === 'collector'))) }, []) // eslint-disable-line
+  useEffect(() => { if (staff) api.selectableUsers().then((us) => setCollectors((us || []).filter((u) => (u.role === 'collector' || u.role === 'manager') && u.id !== auth.user.id))) }, []) // eslint-disable-line
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
   const save = async () => {
     const a = parseInt(f.amount || 0)
@@ -239,7 +239,7 @@ function CollectModal({ dealer, outstanding, onClose, onDone }) {
       {f.mode === 'Cheque' && <Field label="Cheque date (post-dated? enter date on cheque)" value={f.cheque_date} onChange={(v) => set('cheque_date', v)} type="date" />}
       {staff && collectors.length > 0 && (
         <Select label="Collected by" value={collectedBy} onChange={setCollectedBy}
-          options={[['', 'Me (' + auth.user.name + ')'], ...collectors.map((c) => [c.id, c.name])]} testid="collected-by" />
+          options={[['', 'Me (' + auth.user.name + ')'], ...collectors.map((c) => [c.id, c.name + (c.role === 'manager' ? ' (manager)' : '')])]} testid="collected-by" />
       )}
       <div className="text-[11px] text-slate-500 mb-3">Applied to oldest dues first.</div>
       <button onClick={save} disabled={busy} className="w-full bg-emerald-700 text-white font-semibold py-3 rounded-xl disabled:opacity-60">Save payment</button>
