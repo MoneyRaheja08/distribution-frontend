@@ -10,10 +10,10 @@ const fmtTime = (iso) => {
 }
 
 const AGE_TILES = [
-  ['age_0_30', '0–30 days', 'from-brand-50 to-brand-50/40 border-brand-100 text-brand-700'],
-  ['age_31_60', '31–60 days', 'from-amber-50 to-amber-50/40 border-amber-100 text-amber-700'],
-  ['age_61_90', '61–90 days', 'from-orange-50 to-orange-50/40 border-orange-100 text-orange-700'],
-  ['age_90p', '90+ days', 'from-red-50 to-red-50/40 border-red-100 text-red-700'],
+  ['age_0_30', '0–30 days', 'from-brand-50 to-brand-50/40 border-brand-100 text-brand-700', 'bg-brand-500'],
+  ['age_31_60', '31–60 days', 'from-amber-50 to-amber-50/40 border-amber-100 text-amber-700', 'bg-amber-400'],
+  ['age_61_90', '61–90 days', 'from-orange-50 to-orange-50/40 border-orange-100 text-orange-700', 'bg-orange-400'],
+  ['age_90p', '90+ days', 'from-red-50 to-red-50/40 border-red-100 text-red-700', 'bg-red-500'],
 ]
 
 function Stat({ label, value, tone = 'text-slate-900', sub }) {
@@ -34,6 +34,7 @@ export default function Dashboard() {
   useEffect(() => { api.summary().then(setS); api.visitsToday().then(setVisits) }, [])
   if (!s) return <Spin />
   const ageing = s.ageing || {}
+  const ageSum = AGE_TILES.reduce((t, [k]) => t + (ageing[k] || 0), 0) || 1
 
   return (
     <>
@@ -50,18 +51,24 @@ export default function Dashboard() {
       )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6 stagger">
-        <Stat label="Total outstanding" value={inr(s.total_outstanding)} />
-        <Stat label="Collected today" value={inr(s.collected_today)} tone="text-brand-700" />
-        <Stat label="Cheques pending" value={inr(s.cheques_pending)} tone="text-amber-700" />
-        <Stat label="Cash undeposited" value={inr(s.cash_undeposited)} tone="text-orange-700" />
+        <Stat label="Total outstanding" value={inr(s.total_outstanding)} sub={(s.overdue_count || 0) + ' dealer' + (s.overdue_count === 1 ? '' : 's') + ' overdue'} />
+        <Stat label="Collected today" value={inr(s.collected_today)} tone="text-brand-700" sub={inr(s.collected_week || 0) + ' this week'} />
+        <Stat label="Cheques pending" value={inr(s.cheques_pending)} tone="text-amber-700" sub={s.cheques_pending_count ? s.cheques_pending_count + ' in clearing' : 'none in clearing'} />
+        <Stat label="Cash undeposited" value={inr(s.cash_undeposited)} tone="text-orange-700" sub={s.cash_undeposited > 0 ? (s.cash_undeposited_count || 0) + ' to deposit' : 'all deposited'} />
       </div>
 
       <h2 className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500 mb-3">Ageing buckets</h2>
+      <div className="flex h-2 rounded-full overflow-hidden gap-0.5 mb-3 bg-slate-100">
+        {AGE_TILES.map(([k, , , bar]) => (
+          <div key={k} className={bar} style={{ width: Math.round(((ageing[k] || 0) / ageSum) * 100) + '%' }} />
+        ))}
+      </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6 stagger">
         {AGE_TILES.map(([k, label, cls]) => (
           <div key={k} className={'rounded-2xl border bg-gradient-to-br p-5 shadow-soft hover:-translate-y-0.5 transition-transform ' + cls}>
             <div className="text-[12px] font-semibold">{label}</div>
             <div className="font-display text-2xl font-bold tracking-tight mt-1">{inr(ageing[k] || 0)}</div>
+            <div className="text-[11px] font-semibold opacity-70 mt-1">{Math.round(((ageing[k] || 0) / ageSum) * 100)}% of book</div>
           </div>
         ))}
       </div>
