@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Download } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { inr } from '../../lib/format.js'
@@ -569,6 +569,7 @@ function PdfBills({ from, to }) {
 function OwedByBrand() {
   const [r, setR] = useState(null)
   const [q, setQ] = useState('')
+  const nav = useNavigate()
   useEffect(() => { api.reportOwedByBrand().then(setR) }, [])
   if (!r) return <SkeletonList rows={5} />
   const total = r.total_outstanding || 0
@@ -585,11 +586,13 @@ function OwedByBrand() {
   const exportMatrix = () => {
     const money = cols.map((_, i) => i + 1).concat([cols.length + 1])
     const shownTotal = dealers.reduce((s, d) => s + d.total, 0)
+    const base = window.location.origin
+    const links = dealers.map((d, i) => ({ r: i + 1, c: 0, url: `${base}/dealers/${d.dealer_id}`, tip: 'Open ledger & ageing' }))
     exportSheet('owed-by-brand-dealers.xlsx',
       [['Dealer', ...cols, 'Total'],
         ...dealers.map((d) => [d.name, ...cols.map((b) => cell(d, b)), d.total]),
         ['Total', ...cols.map((b) => dealers.reduce((s, d) => s + cell(d, b), 0)), shownTotal]],
-      { money, sheet: 'Owed by brand' })
+      { money, sheet: 'Owed by brand', links })
   }
 
   const exportOld = () => exportSheet('owed-unknown-bills.xlsx',
@@ -614,7 +617,7 @@ function OwedByBrand() {
       <Section title={dealers.length + ' dealers'} action={<ExportBtn onClick={exportMatrix} />}>
         {dealers.length === 0 ? <Row2 a="No dealers match" b="" /> : dealers.map((d) => (
           <div key={d.dealer_id} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
-            <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{d.name}</span><span className="font-bold text-slate-900 shrink-0">{inr(d.total)}</span></div>
+            <div className="flex justify-between text-[13px]"><button onClick={() => nav('/dealers/' + d.dealer_id)} className="font-semibold text-brand-700 hover:underline truncate pr-2 text-left">{d.name}</button><span className="font-bold text-slate-900 shrink-0">{inr(d.total)}</span></div>
             <div className="text-[11px] text-slate-500 mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
               {Object.entries(d.by_brand || {}).sort((a, b) => b[1] - a[1]).map(([b, v]) => (
                 <span key={b} className={b === 'Unknown' ? 'text-amber-700' : ''}><span className="font-medium">{b}</span> {inr(v)}</span>

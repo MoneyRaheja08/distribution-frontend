@@ -64,6 +64,7 @@ export default function App() {
             <Route path="/" element={<Dashboard />} />
             {canDash && <Route path="/dashboard" element={<AdminDashboard />} />}
             <Route path="/dealers" element={<Dealers />} />
+            <Route path="/dealers/:id" element={<Dealers />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/stock" element={<Stock />} />
             <Route path="/imports" element={<Imports />} />

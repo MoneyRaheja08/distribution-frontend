@@ -30,6 +30,14 @@ export function exportSheet(filename, aoa, opts = {}) {
       if (isMoney) cell.z = IND
     }
   }
+  // opts.links: [{ r, c, url, tip }] — turn a cell into a clickable hyperlink
+  for (const { r, c, url, tip } of (opts.links || [])) {
+    if (!url) continue
+    const cell = ws[XLSX.utils.encode_cell({ r, c })]
+    if (!cell) continue
+    cell.l = { Target: url, Tooltip: tip || url }
+    cell.s = { ...(cell.s || {}), font: { color: { rgb: '0563C1' }, underline: true } }
+  }
   ws['!cols'] = Array.from({ length: ncols }, (_, c) => {
     let m = 9
     for (const row of aoa) { const v = row[c]; const len = v == null ? 0 : String(v).length; if (len > m) m = len }

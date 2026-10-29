@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { Loader2, Upload, FileText, Download, Search, ChevronRight, Store, GitMerge } from 'lucide-react'
 import { api } from '../../api/client.js'
 import { toast } from '../../lib/toast.js'
@@ -24,10 +25,19 @@ export default function Dealers() {
   const [q, setQ] = useState('')
   const [dupes, setDupes] = useState([])
 
+  const { id: routeId } = useParams()
+  const nav = useNavigate()
+
   const reload = () => { api.dealers().then(setData); if (isAdmin) api.dealerDuplicates().then(setDupes).catch(() => setDupes([])) }
   useEffect(() => { reload(); api.selectableUsers().then((us) => setCollectors(us.filter((u) => u.role === 'collector'))) }, [])
+  // Deep link /dealers/:id (e.g. from an Excel export) opens that dealer's ledger + ageing
+  useEffect(() => {
+    if (!routeId || !data) return
+    const d = data.find((x) => x.id === routeId)
+    if (d) setLedgerOf(d)
+  }, [routeId, data])
 
-  if (ledgerOf) return <Ledger dealer={ledgerOf} onBack={() => { setLedgerOf(null); reload() }} />
+  if (ledgerOf) return <Ledger dealer={ledgerOf} onBack={() => { setLedgerOf(null); if (routeId) nav('/dealers', { replace: true }); reload() }} />
   if (!data) return <><SectionH>Dealers</SectionH><SkeletonList rows={6} /></>
   const del = async (id) => { if (await confirmDialog('Delete this dealer and its ledger?', { danger: true, confirmLabel: 'Delete' })) { await api.delDealer(id); reload(); toast.success('Dealer deleted') } }
 
