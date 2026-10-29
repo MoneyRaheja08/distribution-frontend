@@ -18,12 +18,12 @@ import { NoCostFixer, CostOverridesManager } from './CostOverrides.jsx'
 const monthStart = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01` }
 const today = () => new Date().toISOString().slice(0, 10)
 const GROUPS = [
-  ['Collect', [['followup', 'Follow-up'], ['beat', 'Beat sheet'], ['collections', 'Collections'], ['cvs', 'Collection vs sales'], ['targets', 'Dealer targets'], ['tpush', 'Target push list'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['cashflow', 'Cash forecast'], ['colleff', 'Collector efficiency']]],
+  ['Collect', [['followup', 'Follow-up'], ['beat', 'Beat sheet'], ['collections', 'Collections'], ['cvs', 'Collection vs sales'], ['targets', 'Dealer targets'], ['tpush', 'Target push list'], ['ageing', 'Ageing'], ['billage', 'Bill ageing'], ['owedbrand', 'Owed by brand'], ['cashflow', 'Cash forecast'], ['colleff', 'Collector efficiency']]],
   ['Sales', [['planner', 'Stock planner'], ['daily', 'Daily sales'], ['sales', 'Dealer × Model'], ['purchasesr', 'Purchases'], ['mom', 'Month vs month'], ['catmix', 'Category mix'], ['price', 'Price realisation'], ['inactive', 'Lost dealers'], ['billspdf', 'PDF bills'], ['purchases', 'Brand buys']]],
   ['Profit', [['profit', 'Profit'], ['profit2', 'Profit 2 · Real'], ['pbd', 'Profit by dealer'], ['costs', 'Cost overrides'], ['scheme', 'Scheme tracker'], ['dscore', 'Dealer scorecard'], ['trend', 'Credit trend'], ['scorecard', 'Brand scorecard'], ['top', 'Top performers'], ['activity', 'Activity'], ['svc', 'Sales vs Coll']]],
   ['Daily', [['digest', 'WhatsApp digest']]],
 ]
-const NO_DATES = new Set(['ageing', 'billage', 'cashflow', 'inactive', 'trend', 'mom', 'scheme', 'digest', 'followup', 'daily', 'planner', 'targets', 'tpush', 'costs'])
+const NO_DATES = new Set(['ageing', 'billage', 'owedbrand', 'cashflow', 'inactive', 'trend', 'mom', 'scheme', 'digest', 'followup', 'daily', 'planner', 'targets', 'tpush', 'costs'])
 
 
 
@@ -76,6 +76,7 @@ export default function Reports() {
       {tab === 'ageing' && <Ageing />}
       {tab === 'activity' && <Activity from={from} to={to} />}
       {tab === 'billage' && <BillAgeing />}
+      {tab === 'owedbrand' && <OwedByBrand />}
       {tab === 'billspdf' && <PdfBills from={from} to={to} />}
       {tab === 'sales' && <SalesReport from={from} to={to} />}
       {tab === 'purchases' && <PurchaseBrandReport from={from} to={to} />}
@@ -561,6 +562,81 @@ function PdfBills({ from, to }) {
           </div>
         ))}
       </Section>
+    </>
+  )
+}
+
+function OwedByBrand() {
+  const [r, setR] = useState(null)
+  const [q, setQ] = useState('')
+  useEffect(() => { api.reportOwedByBrand().then(setR) }, [])
+  if (!r) return <SkeletonList rows={5} />
+  const total = r.total_outstanding || 0
+  const cols = r.all_brands || []
+  const cell = (d, b) => (d.by_brand?.[b] || 0)
+  const dealers = (r.dealers || []).filter((d) => !q || d.name.toLowerCase().includes(q.toLowerCase()))
+  const oldBills = (r.dealers || []).flatMap((d) => (d.old_bills || []).map((b) => ({ dealer: d.name, ...b })))
+
+  const exportSummary = () => exportSheet('owed-by-brand.xlsx',
+    [['Brand', 'Outstanding', 'Share %'],
+      ...r.brands.map((b) => [b.brand, b.outstanding, total ? Math.round((b.outstanding / total) * 1000) / 10 : 0]),
+      ['Total', total, 100]], { money: [1], sheet: 'By brand' })
+
+  const exportMatrix = () => {
+    const money = cols.map((_, i) => i + 1).concat([cols.length + 1])
+    const shownTotal = dealers.reduce((s, d) => s + d.total, 0)
+    exportSheet('owed-by-brand-dealers.xlsx',
+      [['Dealer', ...cols, 'Total'],
+        ...dealers.map((d) => [d.name, ...cols.map((b) => cell(d, b)), d.total]),
+        ['Total', ...cols.map((b) => dealers.reduce((s, d) => s + cell(d, b), 0)), shownTotal]],
+      { money, sheet: 'Owed by brand' })
+  }
+
+  const exportOld = () => exportSheet('owed-unknown-bills.xlsx',
+    [['Dealer', 'Bill No', 'Bill Date', 'Unpaid'], ...oldBills.map((b) => [b.dealer, b.bill_no, b.date, b.unpaid])],
+    { money: [3], sheet: 'Unknown-brand bills' })
+
+  return (
+    <>
+      <Big label="Total outstanding" value={inr(total)} />
+      <Section title="By brand" action={<ExportBtn onClick={exportSummary} />}>
+        {r.brands.length === 0 ? <Row2 a="Nothing outstanding" b="" /> : r.brands.map((b) => (
+          <div key={b.brand} className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-50 last:border-0 text-[13px]">
+            <div className="min-w-0"><span className={'font-semibold ' + (b.brand === 'Unknown' ? 'text-slate-500' : 'text-slate-800')}>{b.brand}</span>
+              <span className="text-[11px] text-slate-400 ml-2">{total ? Math.round((b.outstanding / total) * 100) : 0}% of book</span></div>
+            <div className="font-bold text-slate-900 shrink-0 pl-2">{inr(b.outstanding)}</div>
+          </div>
+        ))}
+      </Section>
+
+      <div className="text-xs font-bold text-slate-600 mb-2 px-0.5">Dealer-wise · owed by brand</div>
+      <FilterBar><Search value={q} onChange={setQ} /></FilterBar>
+      <Section title={dealers.length + ' dealers'} action={<ExportBtn onClick={exportMatrix} />}>
+        {dealers.length === 0 ? <Row2 a="No dealers match" b="" /> : dealers.map((d) => (
+          <div key={d.dealer_id} className="px-3.5 py-2.5 border-b border-slate-50 last:border-0">
+            <div className="flex justify-between text-[13px]"><span className="font-semibold text-slate-800 truncate pr-2">{d.name}</span><span className="font-bold text-slate-900 shrink-0">{inr(d.total)}</span></div>
+            <div className="text-[11px] text-slate-500 mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+              {Object.entries(d.by_brand || {}).sort((a, b) => b[1] - a[1]).map(([b, v]) => (
+                <span key={b} className={b === 'Unknown' ? 'text-amber-700' : ''}><span className="font-medium">{b}</span> {inr(v)}</span>
+              ))}
+            </div>
+            {d.old_bills && d.old_bills.length > 0 && (
+              <div className="text-[11px] text-slate-400 mt-1">Old bills: {d.old_bills.map((b) => `${b.bill_no || '—'} (${inr(b.unpaid)})`).join(' · ')}</div>
+            )}
+          </div>
+        ))}
+      </Section>
+
+      {oldBills.length > 0 && (
+        <Section title={'Unknown-brand bills · by bill number (' + oldBills.length + ')'} action={<ExportBtn onClick={exportOld} />}>
+          {oldBills.map((b, i) => (
+            <div key={i} className="flex justify-between px-3.5 py-2 border-b border-slate-50 last:border-0 text-[13px]">
+              <div className="min-w-0"><span className="font-semibold text-slate-800">{b.bill_no || '—'}</span><span className="text-[11px] text-slate-400 ml-2 truncate">{b.dealer}{b.date ? ' · ' + b.date : ''}</span></div>
+              <div className="font-bold text-slate-900 shrink-0 pl-2">{inr(b.unpaid)}</div>
+            </div>
+          ))}
+        </Section>
+      )}
     </>
   )
 }
